@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/victorotene80/authentication_api/internal/domain/services/policy"
+	"github.com/victorotene80/medilog-api/internal/domain/services/policy"
 )
 
 type MFAService struct {

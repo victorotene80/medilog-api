@@ -1,39 +1,25 @@
 package valueobjects
 
 import (
+	"errors"
 	"regexp"
 	"strings"
-	"github.com/victorotene80/authentication_api/internal/domain"
 )
+
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 
 type Email struct {
 	value string
 }
 
-var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
-
-func NewEmail(email string) (Email, error) {
-	email = strings.TrimSpace(strings.ToLower(email))
-
-	if email == "" {
-		return Email{}, domain.ErrEmptyEmail
+func NewEmail(raw string) (Email, error) {
+	v := strings.TrimSpace(strings.ToLower(raw))
+	if !emailRegex.MatchString(v) {
+		return Email{}, errors.New("invalid email address")
 	}
-
-	if !emailRegex.MatchString(email) {
-		return Email{}, domain.ErrInvalidEmailFormat
-	}
-
-	return Email{value: email}, nil
+	return Email{value: v}, nil
 }
 
-func (e Email) IsValid() bool {
-	return emailRegex.MatchString(e.value)
-}
-
-func (e Email) String() string {
-	return e.value
-}
-
-func (e Email) Equals(other Email) bool {
-	return e.value == other.value
-}
+func (e Email) String() string      { return e.value }
+func (e Email) IsZero() bool        { return e.value == "" }
+func (e Email) Equals(o Email) bool { return e.value == o.value }

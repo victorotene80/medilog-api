@@ -7,10 +7,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/victorotene80/authentication_api/internal/application/messaging"
+	"github.com/victorotene80/medilog-api/internal/application/messaging"
+	"github.com/victorotene80/medilog-api/internal/shared/requestmeta"
 )
 
-// Logging returns a middleware that logs command execution with zap.
 func Logging(logger *zap.Logger) messaging.Middleware {
 	if logger == nil {
 		logger = zap.NewNop()
@@ -21,8 +21,12 @@ func Logging(logger *zap.Logger) messaging.Middleware {
 			start := time.Now()
 			cmdName := fmt.Sprintf("%T", cmd)
 
+			meta, _ := requestmeta.FromContext(ctx)
+
 			logger.Info("command started",
 				zap.String("command", cmdName),
+				zap.String("request_id", meta.RequestID),
+				zap.String("ip_address", meta.IPAddress),
 			)
 
 			res, err := next(ctx, cmd)

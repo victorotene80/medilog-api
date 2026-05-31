@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	infraErrors "github.com/victorotene80/authentication_api/internal/infrastructure"
-	appContracts "github.com/victorotene80/authentication_api/internal/application/contracts"
+	infraErrors "github.com/victorotene80/medilog-api/internal/infrastructure"
+	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 )
 
 type RedisCache[K comparable, V any] struct {

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/victorotene80/authentication_api/internal/domain/contracts"
+	"github.com/victorotene80/medilog-api/internal/domain/contracts"
 )
 
 var _ contracts.TokenGenerator = (*JWTGenerator)(nil)

@@ -1,10 +1,7 @@
 package command
 
 type ChangePasswordCommand struct {
-	UserID      string
+	UserID      int64
 	OldPassword string
 	NewPassword string
-	UserAgent   string
-	IPAddress   string
-	DeviceID    string
 }

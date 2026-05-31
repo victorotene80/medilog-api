@@ -3,12 +3,11 @@ package bootstrap
 import (
 	"context"
 
+	coremsg "github.com/victorotene80/medilog-api/internal/infrastructure/messaging"
+	kafkaInfra "github.com/victorotene80/medilog-api/internal/infrastructure/messaging/kafka"
+	rabbitInfra "github.com/victorotene80/medilog-api/internal/infrastructure/messaging/rabbitmq"
+	"github.com/victorotene80/medilog-api/internal/shared/config"
 	"go.uber.org/zap"
-
-	coremsg "github.com/victorotene80/authentication_api/internal/infrastructure/messaging"
-	kafkaInfra "github.com/victorotene80/authentication_api/internal/infrastructure/messaging/kafka"
-	rabbitInfra "github.com/victorotene80/authentication_api/internal/infrastructure/messaging/rabbitmq"
-	"github.com/victorotene80/authentication_api/internal/shared/config"
 )
 
 type Consumers struct {
@@ -21,12 +20,12 @@ func initializeMessaging(
 	cfg *config.Config,
 	logger *zap.Logger,
 ) (Consumers, func()) {
-	eventBroker := kafkaInfra.NewBroker(kafkaInfra.BrokerConfig{
-		Brokers:      cfg.Messaging.Kafka.Brokers,
-		TopicPrefix:  cfg.Messaging.Kafka.TopicPrefix,
-		WriteTimeout: cfg.Messaging.Kafka.WriteTimeout,
-	})
-	logger.Info("event broker ready (kafka)", zap.Strings("brokers", cfg.Messaging.Kafka.Brokers))
+	//eventBroker := kafkaInfra.NewBroker(kafkaInfra.BrokerConfig{
+	//	Brokers:      cfg.Messaging.Kafka.Brokers,
+	//	TopicPrefix:  cfg.Messaging.Kafka.TopicPrefix,
+	//	WriteTimeout: cfg.Messaging.Kafka.WriteTimeout,
+	//})
+	//logger.Info("event broker ready (kafka)", zap.Strings("brokers", cfg.Messaging.Kafka.Brokers))
 
 	taskBroker, err := rabbitInfra.NewBroker(rabbitInfra.BrokerConfig{
 		DSN:            cfg.Messaging.RabbitMQ.DSN,
@@ -48,8 +47,8 @@ func initializeMessaging(
 	relay := coremsg.New(
 		p.OutboxRepo,
 		coremsg.Brokers{
-			EventBroker: eventBroker,
-			TaskBroker:  taskBroker,
+			//EventBroker: eventBroker,
+			TaskBroker: taskBroker,
 		},
 		coremsg.Config{
 			PollInterval:       cfg.Messaging.Relay.PollInterval,
@@ -94,9 +93,9 @@ func initializeMessaging(
 		if err := taskConsumer.Close(); err != nil {
 			logger.Error("error closing task consumer", zap.Error(err))
 		}
-		if err := eventBroker.Close(); err != nil {
-			logger.Error("error closing event broker", zap.Error(err))
-		}
+		//if err := eventBroker.Close(); err != nil {
+		//	logger.Error("error closing event broker", zap.Error(err))
+		//}
 		if err := taskBroker.Close(); err != nil {
 			logger.Error("error closing task broker", zap.Error(err))
 		}

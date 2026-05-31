@@ -2,69 +2,25 @@ package valueobjects
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
 	"strings"
 )
 
-type PhoneNumber struct {
+var phoneRegex = regexp.MustCompile(`^\+?[1-9]\d{6,14}$`)
+
+type Phone struct {
 	value string
 }
 
-var phoneDigitsOnlyRegex = regexp.MustCompile(`^\+?[1-9][0-9]{7,14}$`)
-
-func NewPhoneNumber(input string) (PhoneNumber, error) {
-	normalized := normalizePhoneNumber(input)
-
-	if normalized == "" {
-		return PhoneNumber{}, errors.New("phone number is required")
+func NewPhone(raw string) (Phone, error) {
+	v := strings.TrimSpace(raw)
+	v = strings.ReplaceAll(v, " ", "")
+	if !phoneRegex.MatchString(v) {
+		return Phone{}, errors.New("invalid phone number")
 	}
-
-	if !phoneDigitsOnlyRegex.MatchString(normalized) {
-		return PhoneNumber{}, fmt.Errorf("invalid phone number format: %q", input)
-	}
-
-	return PhoneNumber{value: normalized}, nil
+	return Phone{value: v}, nil
 }
 
-func MustNewPhoneNumber(input string) PhoneNumber {
-	p, err := NewPhoneNumber(input)
-	if err != nil {
-		panic(err)
-	}
-	return p
-}
-
-func (p PhoneNumber) String() string {
-	return p.value
-}
-
-func (p PhoneNumber) Value() string {
-	return p.value
-}
-
-func (p PhoneNumber) Equals(other PhoneNumber) bool {
-	return p.value == other.value
-}
-
-func (p PhoneNumber) IsZero() bool {
-	return p.value == ""
-}
-
-func normalizePhoneNumber(input string) string {
-	s := strings.TrimSpace(input)
-
-	replacer := strings.NewReplacer(
-		" ", "",
-		"-", "",
-		"(", "",
-		")", "",
-	)
-	s = replacer.Replace(s)
-
-	if strings.HasPrefix(s, "00") {
-		s = "+" + strings.TrimPrefix(s, "00")
-	}
-
-	return s
-}
+func (p Phone) String() string      { return p.value }
+func (p Phone) IsZero() bool        { return p.value == "" }
+func (p Phone) Equals(o Phone) bool { return p.value == o.value }

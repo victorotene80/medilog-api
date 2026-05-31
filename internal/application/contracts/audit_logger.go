@@ -2,7 +2,7 @@ package contracts
 
 import (
 	"context"
-	"github.com/victorotene80/authentication_api/internal/application/dto"
+	"github.com/victorotene80/medilog-api/internal/application/dto"
 )
 
 type AuditLogger interface {

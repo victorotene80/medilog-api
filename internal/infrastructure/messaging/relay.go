@@ -7,8 +7,8 @@ import (
 
 	"go.uber.org/zap"
 
-	appmsg "github.com/victorotene80/authentication_api/internal/application/messaging"
-	outboxInfra "github.com/victorotene80/authentication_api/internal/infrastructure/messaging/outbox"
+	appmsg "github.com/victorotene80/medilog-api/internal/application/messaging"
+	outboxInfra "github.com/victorotene80/medilog-api/internal/infrastructure/messaging/outbox"
 )
 
 type Config struct {
@@ -22,8 +22,8 @@ type Config struct {
 }
 
 type Brokers struct {
-	EventBroker MessageBroker
-	TaskBroker  MessageBroker
+	//EventBroker MessageBroker
+	TaskBroker MessageBroker
 }
 
 type Relay struct {
@@ -119,7 +119,7 @@ func (r *Relay) tick(ctx context.Context) error {
 			zap.String("id", env.ID),
 			zap.String("name", env.Name),
 			zap.String("kind", string(env.Kind)),
-			zap.String("aggregate_id", env.AggregateID),
+			zap.Int64("aggregate_id", env.AggregateID),
 			zap.String("aggregate_type", env.AggregateType),
 		)
 
@@ -215,11 +215,11 @@ func (r *Relay) resolveBroker(env appmsg.Envelope) (MessageBroker, error) {
 
 func (r *Relay) namedBroker(name string) (MessageBroker, error) {
 	switch name {
-	case "event":
-		if r.brokers.EventBroker == nil {
-			return nil, fmt.Errorf("event broker is nil")
-		}
-		return r.brokers.EventBroker, nil
+	//case "event":
+	///	if r.brokers.EventBroker == nil {
+	//		return nil, fmt.Errorf("event broker is nil")
+	//	}
+	//	return r.brokers.EventBroker, nil
 	case "task":
 		if r.brokers.TaskBroker == nil {
 			return nil, fmt.Errorf("task broker is nil")

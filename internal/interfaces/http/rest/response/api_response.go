@@ -6,16 +6,11 @@ import (
 )
 
 type APIResponse[T any] struct {
-	Status  string `json:"status"`            
-	Code    string `json:"code,omitempty"`    
-	Message string `json:"message,omitempty"` 
-	Data    *T     `json:"data,omitempty"`    
-	Errors  any    `json:"errors,omitempty"`  
-}
-
-type ValidationError struct {
-	Field   string `json:"field"`
-	Message string `json:"message"`
+	Status  bool   `json:"status"`
+	Code    string `json:"code,omitempty"`
+	Message string `json:"message,omitempty"`
+	Data    *T     `json:"data,omitempty"`
+	Errors  any    `json:"errors,omitempty"`
 }
 
 func WriteJSON(w http.ResponseWriter, statusCode int, payload any) {
@@ -26,7 +21,7 @@ func WriteJSON(w http.ResponseWriter, statusCode int, payload any) {
 
 func Success[T any](w http.ResponseWriter, statusCode int, code, message string, data *T) {
 	resp := APIResponse[T]{
-		Status:  "success",
+		Status:  true,
 		Code:    code,
 		Message: message,
 		Data:    data,
@@ -35,8 +30,8 @@ func Success[T any](w http.ResponseWriter, statusCode int, code, message string,
 }
 
 func Error(w http.ResponseWriter, statusCode int, code, message string, errors any) {
-	resp := APIResponse[struct{}]{ // empty data
-		Status:  "error",
+	resp := APIResponse[struct{}]{
+		Status:  false,
 		Code:    code,
 		Message: message,
 		Errors:  errors,

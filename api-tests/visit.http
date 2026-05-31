@@ -1,0 +1,93 @@
+@baseUrl = http://localhost:8080/api/v1
+
+
+### E2E 1 - Create Visit
+POST {{baseUrl}}/visits/
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "hospital_name": "Medilog Clinic",
+  "diagnosis": "Upper respiratory tract infection",
+  "visit_date": "2026-05-28T10:30:00Z",
+  "outcome": "Medication prescribed and follow-up recommended",
+  "meds_count": 1,
+  "doctor": "Dr. Ada Okafor",
+  "chief_complaint": "Cough, fever, and sore throat",
+  "notes": "E2E visit record. Patient should return if symptoms persist after 3 days.",
+  "blood_pressure": "120/80",
+  "temperature": 37.8,
+  "weight": 72.5,
+  "pulse": 82
+}
+
+
+### E2E 2 - List Visits And Capture E2E Visit
+GET {{baseUrl}}/visits/
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+> {%
+    const data = response.body && response.body.data ? response.body.data : [];
+    const item = data.find(function (v) {
+        return v.hospital_name === "Medilog Clinic" &&
+            v.diagnosis === "Upper respiratory tract infection" &&
+            v.notes &&
+            v.notes.indexOf("E2E visit record") >= 0;
+    });
+    if (item) {
+        client.global.set("visitPublicId", item.public_id);
+    }
+%}
+
+
+### E2E 3 - Get Visit
+GET {{baseUrl}}/visits/{{visitPublicId}}
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+
+### E2E 4 - Update Visit
+PUT {{baseUrl}}/visits/{{visitPublicId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "hospital_name": "Medilog Clinic",
+  "diagnosis": "Upper respiratory tract infection",
+  "visit_date": "2026-05-28T10:30:00Z",
+  "outcome": "Improving after prescribed treatment",
+  "meds_count": 1,
+  "doctor": "Dr. Ada Okafor",
+  "chief_complaint": "Cough and sore throat",
+  "notes": "E2E visit record updated. Continue medication and hydrate well.",
+  "blood_pressure": "118/78",
+  "temperature": 37.1,
+  "weight": 72.4,
+  "pulse": 78
+}
+
+
+### E2E 5 - List Visits By Date Range
+GET {{baseUrl}}/visits/?from=2026-05-01&to=2026-05-31
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+
+### Optional - Create Minimal Visit
+POST {{baseUrl}}/visits/
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "visit_date": "2026-05-28T10:30:00Z"
+}
+
+
+### Optional Cleanup - Delete Visit
+DELETE {{baseUrl}}/visits/{{visitPublicId}}
+Authorization: Bearer {{accessToken}}
+Accept: application/json

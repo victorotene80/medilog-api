@@ -8,15 +8,13 @@ import (
 
 func NewEvent(
 	name string,
-	aggregateID string,
+	aggregateID int64,
 	payload any,
 	meta map[string]string,
 ) DomainEvent {
-
 	if meta == nil {
 		meta = map[string]string{}
 	}
-
 	return baseDomainEvent{
 		id:          uuid.NewString(),
 		name:        name,

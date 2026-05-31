@@ -8,7 +8,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
 
-	"github.com/victorotene80/authentication_api/internal/shared/config"
+	"github.com/victorotene80/medilog-api/internal/shared/config"
 )
 
 func initializeRedis(cfg config.RedisConfig, logger *zap.Logger) (*redis.Client, error) {

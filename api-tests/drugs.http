@@ -1,0 +1,72 @@
+@baseUrl = http://localhost:8080/api/v1
+
+
+### Verify Drug - NAFDAC reg number (NG)
+POST {{baseUrl}}/drugs/verify
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "drug_name": "Amoxicillin",
+  "registration_number": "A4-0219",
+  "country_code": "NG",
+  "expiry_date": "2026-12-01T00:00:00Z"
+}
+
+> {%
+    if (response.body && response.body.data && response.body.data.public_id) {
+        client.global.set("scanPublicId", response.body.data.public_id);
+    }
+%}
+
+
+### Verify Drug - name only fallback (no reg number)
+POST {{baseUrl}}/drugs/verify
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "drug_name": "Paracetamol",
+  "country_code": "NG"
+}
+
+
+### Verify Drug - not found
+POST {{baseUrl}}/drugs/verify
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "drug_name": "FakeDrugXYZ999",
+  "registration_number": "ZZ-0000",
+  "country_code": "NG"
+}
+
+
+### Verify Drug - expired physical label
+POST {{baseUrl}}/drugs/verify
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "drug_name": "Amoxicillin",
+  "registration_number": "A4-0219",
+  "country_code": "NG",
+  "expiry_date": "2022-01-01T00:00:00Z"
+}
+
+
+### List scan history
+GET {{baseUrl}}/drugs/scans
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+
+### Get single scan
+GET {{baseUrl}}/drugs/scans/{{scanPublicId}}
+Authorization: Bearer {{accessToken}}
+Accept: application/json

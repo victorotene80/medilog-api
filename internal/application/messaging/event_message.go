@@ -3,7 +3,7 @@ package messaging
 /*import (
 	"time"
 
-	"github.com/victorotene80/authentication_api/internal/domain/events"
+	"github.com/victorotene80/medilog-api/internal/domain/events"
 )
 
 type EventMessage struct {

@@ -1,8 +1,7 @@
-package contracts // application layer
+package contracts
 
 import (
 	"context"
-
 )
 
 type Cache[K comparable, V any] interface {

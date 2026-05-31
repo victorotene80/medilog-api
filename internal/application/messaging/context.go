@@ -5,12 +5,12 @@ type Context struct {
 	Name          string
 	AggregateType string
 	Action        string
-	CorrelationID string
-	CausationID   string
+	CorrelationID *string
+	CausationID   *string
 
-	IPAddress string
-	UserAgent string
-	DeviceID  string
+	IPAddress *string
+	UserAgent *string
+	DeviceID  *string
 }
 
 func (c Context) ToMetadata() map[string]string {
@@ -21,20 +21,20 @@ func (c Context) ToMetadata() map[string]string {
 		"action":         c.Action,
 	}
 
-	if c.CorrelationID != "" {
-		meta["correlation_id"] = c.CorrelationID
+	if c.CorrelationID != nil {
+		meta["correlation_id"] = *c.CorrelationID
 	}
-	if c.CausationID != "" {
-		meta["causation_id"] = c.CausationID
+	if c.CausationID != nil {
+		meta["causation_id"] = *c.CausationID
 	}
-	if c.IPAddress != "" {
-		meta["ip_address"] = c.IPAddress
+	if c.IPAddress != nil {
+		meta["ip_address"] = *c.IPAddress
 	}
-	if c.UserAgent != "" {
-		meta["user_agent"] = c.UserAgent
+	if c.UserAgent != nil {
+		meta["user_agent"] = *c.UserAgent
 	}
-	if c.DeviceID != "" {
-		meta["device_id"] = c.DeviceID
+	if c.DeviceID != nil {
+		meta["device_id"] = *c.DeviceID
 	}
 
 	return meta

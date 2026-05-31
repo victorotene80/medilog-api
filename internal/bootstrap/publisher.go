@@ -3,8 +3,8 @@ package bootstrap
 import (
 	"go.uber.org/zap"
 
-	appContracts "github.com/victorotene80/authentication_api/internal/application/contracts"
-	outboxPublisher "github.com/victorotene80/authentication_api/internal/infrastructure/messaging/outbox"
+	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
+	outboxPublisher "github.com/victorotene80/medilog-api/internal/infrastructure/messaging/outbox"
 )
 
 func initializeMessagePublisher(
@@ -23,12 +23,12 @@ func initializeMessagePublisher(
 
 	"go.uber.org/zap"
 
-	appContracts "github.com/victorotene80/authentication_api/internal/application/contracts"
-	kafkaInfra "github.com/victorotene80/authentication_api/internal/infrastructure/messaging/kafka"
-	outboxPublisher "github.com/victorotene80/authentication_api/internal/infrastructure/messaging/outbox"
-	rabbitInfra "github.com/victorotene80/authentication_api/internal/infrastructure/messaging/rabbitmq"
-	"github.com/victorotene80/authentication_api/internal/infrastructure/messaging"
-	"github.com/victorotene80/authentication_api/internal/shared/config"
+	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
+	kafkaInfra "github.com/victorotene80/medilog-api/internal/infrastructure/messaging/kafka"
+	outboxPublisher "github.com/victorotene80/medilog-api/internal/infrastructure/messaging/outbox"
+	rabbitInfra "github.com/victorotene80/medilog-api/internal/infrastructure/messaging/rabbitmq"
+	"github.com/victorotene80/medilog-api/internal/infrastructure/messaging"
+	"github.com/victorotene80/medilog-api/internal/shared/config"
 )
 
 type Consumers struct {

@@ -3,8 +3,8 @@ package contracts
 import (
 	"context"
 
-	appmsg "github.com/victorotene80/authentication_api/internal/application/messaging"
-	"github.com/victorotene80/authentication_api/internal/domain/events"
+	appmsg "github.com/victorotene80/medilog-api/internal/application/messaging"
+	"github.com/victorotene80/medilog-api/internal/domain/events"
 )
 
 type MessagePublisher interface {

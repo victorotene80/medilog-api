@@ -7,7 +7,7 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"github.com/victorotene80/authentication_api/internal/bootstrap"
+	"github.com/victorotene80/medilog-api/internal/bootstrap"
 )
 
 func main() {

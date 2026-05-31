@@ -1,13 +1,7 @@
 package command
 
 type LoginCommand struct {
-	Email    string
+	Email    *string
+	Phone    *string
 	Password string
-
-	IPAddress         string
-	UserAgent         string
-	DeviceID          string
-	DeviceFingerprint string
-	DeviceName        string
-	RequestID         string
 }

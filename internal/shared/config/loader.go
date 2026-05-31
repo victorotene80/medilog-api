@@ -24,19 +24,277 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	geo, err := loadGeoIP()
+	httpCfg, err := loadHTTP()
 	if err != nil {
 		return nil, err
 	}
 
 	messaging := loadMessaging()
 
+	googleCfg, err := loadGoogle()
+	if err != nil {
+		return nil, err
+	}
+
+	claude, err := loadClaude()
+	if err != nil {
+		return nil, err
+	}
+
+	ai, err := loadAI()
+	if err != nil {
+		return nil, err
+	}
+
+	otp, err := loadOTP()
+	if err != nil {
+		return nil, err
+	}
+
+	telemetry, err := loadTelemetry()
+	if err != nil {
+		return nil, err
+	}
+
+	twilio, err := loadTwilio()
+	if err != nil {
+		return nil, err
+	}
+
+	bulkSms, err := loadBulkSms()
+	if err != nil {
+		return nil, err
+	}
+
+	sms, err := loadSms()
+	if err != nil {
+		return nil, err
+	}
+
+	telnyx, err := loadTelnyx()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		Security:  security,
 		Database:  database,
 		Redis:     redisCfg,
-		GeoIP:    geo,
 		Messaging: messaging,
+		HTTP:      httpCfg,
+		Google:    googleCfg,
+		AI:        ai,
+		Claude:    claude,
+		OTP:       otp,
+		Telemetry: telemetry,
+		Twilio:    twilio,
+		BulkSms:   bulkSms,
+		SMS:       sms,
+		Telnyx:    telnyx,
+	}, nil
+}
+
+func loadAI() (AIConfig, error) {
+	contextWindowTokens, err := getPositiveInt("AI_CONTEXT_WINDOW_TOKENS")
+	if err != nil {
+		return AIConfig{}, err
+	}
+
+	maxContextMessages, err := getPositiveInt("AI_MAX_CONTEXT_MESSAGES")
+	if err != nil {
+		return AIConfig{}, err
+	}
+
+	summaryTokenThreshold, err := getPositiveInt("AI_SUMMARY_TOKEN_THRESHOLD")
+	if err != nil {
+		return AIConfig{}, err
+	}
+
+	return AIConfig{
+		Enabled:               getBoolOrDefault("AI_ENABLED", true),
+		Provider:              getStringOrDefault("AI_PROVIDER", "claude"),
+		ContextWindowTokens:   contextWindowTokens,
+		MaxContextMessages:    maxContextMessages,
+		SummaryTokenThreshold: summaryTokenThreshold,
+	}, nil
+}
+
+func loadTelnyx() (TelnyxConfig, error) {
+	apiKey, err := getString("TELNYX_API_KEY")
+	if err != nil {
+		return TelnyxConfig{}, err
+	}
+
+	return TelnyxConfig{
+		APIKey: apiKey,
+
+		FromNumber:         getStringOrDefault("TELNYX_FROM_NUMBER", ""),
+		MessagingProfileID: getStringOrDefault("TELNYX_MESSAGING_PROFILE_ID", ""),
+
+		MessagesURL: getStringOrDefault(
+			"TELNYX_MESSAGES_URL",
+			"https://api.telnyx.com/v2/messages",
+		),
+	}, nil
+}
+
+func loadTwilio() (TwilioConfig, error) {
+	accountSID, err := getString("TWILIO_ACCOUNT_SID")
+	if err != nil {
+		return TwilioConfig{}, err
+	}
+
+	authToken, err := getString("TWILIO_AUTH_TOKEN")
+	if err != nil {
+		return TwilioConfig{}, err
+	}
+
+	baseURL := getStringOrDefault(
+		"TWILIO_BASE_URL",
+		"https://api.twilio.com",
+	)
+
+	return TwilioConfig{
+		AccountSID: accountSID,
+		AuthToken:  authToken,
+
+		FromNumber:          getStringOrDefault("TWILIO_FROM_NUMBER", ""),
+		WhatsAppFromNumber:  getStringOrDefault("TWILIO_WHATSAPP_FROM_NUMBER", ""),
+		MessagingServiceSID: getStringOrDefault("TWILIO_MESSAGING_SERVICE_SID", ""),
+
+		BaseURL: baseURL,
+
+		MessagesURL: getStringOrDefault(
+			"TWILIO_MESSAGES_URL",
+			strings.TrimRight(baseURL, "/")+"/2010-04-01/Accounts/{accountSid}/Messages.json",
+		),
+	}, nil
+}
+
+func loadSms() (SMSConfig, error) {
+	isActive := getBoolOrDefault("SMS_ENABLED", true)
+	maxRetries, err := getInt("SMS_MAX_BULK_FAILURES")
+	if err != nil {
+		return SMSConfig{}, err
+	}
+
+	return SMSConfig{
+		Enabled:         isActive,
+		MaxBulkFailures: maxRetries,
+	}, nil
+}
+
+func loadBulkSms() (BulkSmsConfig, error) {
+	apiToken, err := getString("BULK_SMS_API_TOKEN")
+	if err != nil {
+		return BulkSmsConfig{}, err
+	}
+
+	sender, err := getString("BULK_SMS_SENDER")
+	if err != nil {
+		return BulkSmsConfig{}, err
+	}
+
+	return BulkSmsConfig{
+		ProdBaseURL: getStringOrDefault(
+			"BULK_SMS_PROD_BASEURL",
+			"https://www.bulksmsnigeria.com/api/v2",
+		),
+
+		TestBaseURL: getStringOrDefault(
+			"BULK_SMS_TEST_BASEURL",
+			"https://www.bulksmsnigeria.com/api/sandbox/v2",
+		),
+
+		Sender: sender,
+
+		SendMessagePath: getStringOrDefault(
+			"BULK_SMS_SEND_MESSAGE",
+			"/sms",
+		),
+
+		CheckBalancePath: getStringOrDefault(
+			"BULK_SMS_CHECK_BALANCE",
+			"",
+		),
+
+		DeliveryReportPath: getStringOrDefault(
+			"BULK_SMS_GET_DELIVERY_REPORT",
+			"",
+		),
+
+		APIToken: apiToken,
+
+		LegacyToken: getStringOrDefault(
+			"BULK_SMS_API_LEGACY_TOKEN",
+			"",
+		),
+	}, nil
+}
+
+func loadGoogle() (GoogleConfig, error) {
+	clientID, err := getString("GOOGLE_CLIENT_ID")
+	if err != nil {
+		return GoogleConfig{}, err
+	}
+
+	return GoogleConfig{
+		ClientID: clientID,
+
+		TokenInfoURL: getStringOrDefault(
+			"GOOGLE_TOKEN_INFO_URL",
+			"https://oauth2.googleapis.com/tokeninfo",
+		),
+
+		UserInfoURL: getStringOrDefault(
+			"GOOGLE_USER_INFO_URL",
+			"https://www.googleapis.com/oauth2/v3/userinfo",
+		),
+
+		OAuthBaseURL: getStringOrDefault(
+			"GOOGLE_OAUTH_BASE_URL",
+			"https://accounts.google.com/o/oauth2/v2/auth",
+		),
+	}, nil
+}
+
+func loadOTP() (OTPConfig, error) {
+	return OTPConfig{
+		Length:     getIntOrDefault("OTP_LENGTH", 6),
+		TTLMins:    getIntOrDefault("OTP_TTL_MINS", 10),
+		BcryptCost: getIntOrDefault("OTP_BCRYPT_COST", 0), // 0 → bcrypt.DefaultCost in service
+	}, nil
+
+}
+
+func loadTelemetry() (TelemetryConfig, error) {
+	return TelemetryConfig{
+		Enabled:          getBoolOrDefault("OTEL_ENABLED", false),
+		ServiceName:      getStringOrDefault("OTEL_SERVICE_NAME", "medilog-api"),
+		ServiceVersion:   getStringOrDefault("OTEL_SERVICE_VERSION", "0.1.0"),
+		ExporterEndpoint: getStringOrDefault("OTEL_EXPORTER_ENDPOINT", "localhost:4317"),
+		ExporterInsecure: getBoolOrDefault("OTEL_EXPORTER_INSECURE", true),
+	}, nil
+}
+
+func loadClaude() (ClaudeConfig, error) {
+	apiKey := getStringOrDefault("CLAUDE_API_KEY", "")
+	if apiKey == "" {
+		apiKey = getStringOrDefault("ANTHROPIC_API_KEY", "")
+	}
+
+	return ClaudeConfig{
+		APIKey: apiKey,
+		BaseURL: getStringOrDefault(
+			"CLAUDE_BASE_URL",
+			"https://api.anthropic.com",
+		),
+		Model: getStringOrDefault(
+			"CLAUDE_MODEL",
+			getStringOrDefault("CLAUDE_BALANCED_MODEL", "claude-sonnet-4-20250514"),
+		),
+		MaxTokens:  getIntOrDefault("CLAUDE_MAX_TOKENS", 1024),
+		APIVersion: getStringOrDefault("CLAUDE_API_VERSION", "2023-06-01"),
 	}, nil
 }
 
@@ -56,6 +314,13 @@ func loadSecurity() (SecurityConfig, error) {
 		JWTSecret:       jwtSecret,
 		AccessTokenTTL:  getDurationOrDefault("ACCESS_TOKEN_TTL", 15*time.Minute),
 		RefreshTokenTTL: getDurationOrDefault("REFRESH_TOKEN_TTL", 7*24*time.Hour),
+	}, nil
+}
+
+func loadHTTP() (HTTPConfig, error) {
+	timeout := getDurationOrDefault("HTTP_TIMEOUT", 10*time.Second)
+	return HTTPConfig{
+		Timeout: timeout,
 	}, nil
 }
 
@@ -116,15 +381,6 @@ func loadDatabase() (DatabaseConfig, error) {
 		MaxIdleConns: getIntOrDefault("DB_MAX_IDLE", 5),
 		MaxLifetime:  getIntOrDefault("DB_MAX_LIFETIME", 300),
 	}, nil
-}
-
-func loadGeoIP() (GeoIPConfig, error) {
-	path, err := getString("GEOIP_DB_PATH")
-	if err != nil {
-		return GeoIPConfig{}, err
-	}
-
-	return GeoIPConfig{DBPath: path}, nil
 }
 
 func loadMessaging() MessagingConfig {
@@ -216,6 +472,17 @@ func getInt(key string) (int, error) {
 	return i, nil
 }
 
+func getPositiveInt(key string) (int, error) {
+	value, err := getInt(key)
+	if err != nil {
+		return 0, err
+	}
+	if value <= 0 {
+		return 0, fmt.Errorf("%s must be greater than zero", key)
+	}
+	return value, nil
+}
+
 func getIntOrDefault(key string, def int) int {
 	if v := os.Getenv(key); v != "" {
 		if i, err := strconv.Atoi(v); err == nil {
@@ -223,4 +490,20 @@ func getIntOrDefault(key string, def int) int {
 		}
 	}
 	return def
+}
+
+func getBoolOrDefault(key string, def bool) bool {
+	v := strings.TrimSpace(strings.ToLower(os.Getenv(key)))
+	if v == "" {
+		return def
+	}
+
+	switch v {
+	case "true", "1", "yes", "y", "on":
+		return true
+	case "false", "0", "no", "n", "off":
+		return false
+	default:
+		return def
+	}
 }

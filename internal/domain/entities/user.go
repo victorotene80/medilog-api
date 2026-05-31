@@ -1,215 +1,124 @@
 package entities
 
 import (
-	"errors"
 	"time"
 
-	"github.com/victorotene80/authentication_api/internal/domain/valueobjects"
+	"github.com/victorotene80/medilog-api/internal/domain/valueobjects"
 )
 
 type User struct {
-	id                    string
-	email                 valueobjects.Email
-	password              valueobjects.Password
-	passwordChangedAt     *time.Time
-	passwordExpiresAt     *time.Time
-	requirePasswordChange bool
-	firstName             string
-	lastName              string
-	middleName            string
-	status                valueobjects.UserStatus
-	emailVerified         bool
-	emailVerifiedAt       *time.Time
-	failedLoginAttempts   int
-	lockedUntil           *time.Time
-	lastLoginAt           *time.Time
-	lastLoginIP           string
-	phone                 valueobjects.PhoneNumber
-	lastActiveAt          *time.Time
-	createdAt             time.Time
-	updatedAt             time.Time
-	deletedAt             *time.Time
+	ID                    int64
+	PublicID              string
+	Email                 *string
+	Phone                 *string
+	FirstName             string
+	LastName              string
+	AvatarURL             *string
+	DateOfBirth           *time.Time
+	Sex                   *valueobjects.Sex
+	BloodType             *valueobjects.BloodType
+	CountryCode           *valueobjects.CountryCode
+	PasswordHash          *string
+	Status                valueobjects.UserStatus
+	EmailVerifiedAt       *time.Time
+	PhoneVerifiedAt       *time.Time
+	IsOnboardingCompleted bool
+	PasswordChangedAt     *time.Time
+	FailedLoginAttempts   int
+	LockedUntil           *time.Time
+	LastLoginAt           *time.Time
+	LastLoginIP           *string
+	LastActiveAt          *time.Time
+	DeletedAt             *time.Time
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }
 
-func NewUserForRegistration(
-	id string,
-	email valueobjects.Email,
-	password valueobjects.Password,
-	firstName, lastName, middleName, lastLoginIP string,
-	phone valueobjects.PhoneNumber,
+func NewUser(
+	email *string,
+	phone *string,
+	firstName string,
+	lastName string,
+	countryCode valueobjects.CountryCode,
+	password *string,
+	dateOfBirth time.Time,
+	bloodType valueobjects.BloodType,
+	sex valueobjects.Sex,
+) *User {
+	now := time.Now().UTC()
+
+	return &User{
+		Email:                 email,
+		Phone:                 phone,
+		FirstName:             firstName,
+		LastName:              lastName,
+		CountryCode:           &countryCode,
+		PasswordHash:          password,
+		DateOfBirth:           &dateOfBirth,
+		BloodType:             &bloodType,
+		Sex:                   &sex,
+		Status:                valueobjects.UserStatusPendingVerification,
+		IsOnboardingCompleted: false,
+		CreatedAt:             now,
+		UpdatedAt:             now,
+	}
+}
+
+func NewGoogleUser(
+	email string,
+	firstName string,
+	lastName string,
+	pictureURL string,
 	now time.Time,
 ) *User {
 	return &User{
-		id:                    id,
-		email:                 email,
-		password:              password,
-		firstName:             firstName,
-		lastName:              lastName,
-		middleName:            middleName,
-		status:                valueobjects.UserStatusPendingVerification,
-		emailVerified:         false,
-		emailVerifiedAt:       nil,
-		passwordChangedAt:     nil,
-		passwordExpiresAt:     nil,
-		requirePasswordChange: false,
-		failedLoginAttempts:   0,
-		lockedUntil:           nil,
-		lastLoginAt:           nil,
-		lastLoginIP:           lastLoginIP,
-		phone:                 phone,
-		lastActiveAt:          nil,
-		createdAt:             now,
-		updatedAt:             now,
-		deletedAt:             nil,
+		Email:                 &email,
+		Phone:                 nil,
+		FirstName:             firstName,
+		LastName:              lastName,
+		AvatarURL:             nullableString(pictureURL),
+		PasswordHash:          nil,
+		DateOfBirth:           nil,
+		Sex:                   nil,
+		BloodType:             nil,
+		CountryCode:           nil,
+		Status:                valueobjects.UserStatusActive,
+		EmailVerifiedAt:       &now,
+		IsOnboardingCompleted: false,
+		CreatedAt:             now,
+		UpdatedAt:             now,
 	}
 }
 
-func NewUserFromDB(
-	id string,
-	email valueobjects.Email,
-	password valueobjects.Password,
-	status valueobjects.UserStatus,
-	firstName, lastName, middleName string,
-	emailVerified bool,
-	emailVerifiedAt, passwordChangedAt, passwordExpiresAt, lockedUntil,
-	lastLoginAt, lastActiveAt, deletedAt *time.Time,
-	lastLoginIP string,
-	phone valueobjects.PhoneNumber,
-	failedAttempts int,
-	createdAt, updatedAt time.Time,
-) *User {
-	return &User{
-		id:                    id,
-		email:                 email,
-		password:              password,
-		status:                status,
-		firstName:             firstName,
-		lastName:              lastName,
-		middleName:            middleName,
-		emailVerified:         emailVerified,
-		emailVerifiedAt:       emailVerifiedAt,
-		passwordChangedAt:     passwordChangedAt,
-		passwordExpiresAt:     passwordExpiresAt,
-		requirePasswordChange: false,
-		failedLoginAttempts:   failedAttempts,
-		lockedUntil:           lockedUntil,
-		lastLoginAt:           lastLoginAt,
-		lastLoginIP:           lastLoginIP,
-		phone:                 phone,
-		lastActiveAt:          lastActiveAt,
-		createdAt:             createdAt,
-		updatedAt:             updatedAt,
-		deletedAt:             deletedAt,
+func nullableString(s string) *string {
+	if s == "" {
+		return nil
 	}
+
+	return &s
 }
 
-func (u *User) MarkEmailVerified(at time.Time) {
-	u.emailVerified = true
-	u.emailVerifiedAt = &at
+func (u *User) FullName() string {
+	return u.FirstName + " " + u.LastName
 }
 
-func (u *User) UpdateProfile(firstName, lastName, middleName string) {
-	u.firstName = firstName
-	u.lastName = lastName
-	u.middleName = middleName
+func (u *User) IsEmailVerified() bool {
+	return u.EmailVerifiedAt != nil
 }
 
-func (u *User) ChangePassword(newPassword valueobjects.Password, changedAt time.Time, requireChange bool) {
-	u.password = newPassword
-	u.passwordChangedAt = &changedAt
-	u.requirePasswordChange = requireChange
+func (u *User) IsPhoneVerified() bool {
+	return u.PhoneVerifiedAt != nil
 }
 
-func (u *User) SetStatus(status valueobjects.UserStatus) {
-	u.status = status
+func (u *User) IsDeleted() bool {
+	return u.DeletedAt != nil
 }
 
-func (u *User) RecordLogin(at time.Time, ip string) {
-	u.lastLoginAt = &at
-	u.lastLoginIP = ip
-	u.lastActiveAt = &at
-	u.failedLoginAttempts = 0
-	u.lockedUntil = nil
+func (u *User) IncrementFailedLogins() {
+	u.FailedLoginAttempts++
 }
 
-func (u *User) RecordActivity(at time.Time) {
-	u.lastActiveAt = &at
+func (u *User) ResetFailedLogins() {
+	u.FailedLoginAttempts = 0
+	u.LockedUntil = nil
 }
-
-func (u *User) RecordFailedLogin(at time.Time) {
-	u.failedLoginAttempts++
-}
-
-func (u *User) ApplyLock(lockedUntil time.Time) {
-	u.lockedUntil = &lockedUntil
-	u.status = valueobjects.UserStatusLocked
-}
-
-func (u *User) ClearLock() {
-	u.lockedUntil = nil
-	if u.status == valueobjects.UserStatusLocked {
-		u.status = valueobjects.UserStatusActive
-	}
-}
-
-func (u *User) SoftDelete(at time.Time) error {
-	if u.deletedAt != nil {
-		return errors.New("user already deleted")
-	}
-	u.deletedAt = &at
-	return nil
-}
-
-func (u *User) IncrementFailedLogin() error {
-	if u.lockedUntil != nil {
-		return errors.New("account is currently locked")
-	}
-	u.failedLoginAttempts++
-	return nil
-}
-
-func (u *User) PasswordChangedAt() *time.Time {
-	return u.passwordChangedAt
-}
-
-func (u *User) PasswordExpiresAt() *time.Time {
-	return u.passwordExpiresAt
-}
-
-func (u *User) RequirePasswordChange() bool {
-	return u.requirePasswordChange
-}
-
-func (u *User) LockUntil(until time.Time) {
-	u.lockedUntil = &until
-	u.status = valueobjects.UserStatusLocked
-}
-
-func (u *User) UnlockIfExpired(now time.Time) {
-	if u.lockedUntil != nil && !now.Before(*u.lockedUntil) {
-		u.lockedUntil = nil
-		if u.status == valueobjects.UserStatusLocked {
-			u.status = valueobjects.UserStatusActive
-		}
-		u.failedLoginAttempts = 0
-	}
-}
-
-func (u *User) ID() string                           { return u.id }
-func (u *User) Email() valueobjects.Email            { return u.email }
-func (u *User) Password() valueobjects.Password      { return u.password }
-func (u *User) Status() valueobjects.UserStatus      { return u.status }
-func (u *User) FirstName() string                    { return u.firstName }
-func (u *User) LastName() string                     { return u.lastName }
-func (u *User) MiddleName() string                   { return u.middleName }
-func (u *User) EmailVerified() bool                  { return u.emailVerified }
-func (u *User) EmailVerifiedAt() *time.Time          { return u.emailVerifiedAt }
-func (u *User) FailedLoginAttempts() int             { return u.failedLoginAttempts }
-func (u *User) LockedUntil() *time.Time              { return u.lockedUntil }
-func (u *User) LastLoginAt() *time.Time              { return u.lastLoginAt }
-func (u *User) LastLoginIP() string                  { return u.lastLoginIP }
-func (u *User) LastActiveAt() *time.Time             { return u.lastActiveAt }
-func (u *User) CreatedAt() time.Time                 { return u.createdAt }
-func (u *User) UpdatedAt() time.Time                 { return u.updatedAt }
-func (u *User) DeletedAt() *time.Time                { return u.deletedAt }
-func (u *User) Phone() valueobjects.PhoneNumber      { return u.phone }

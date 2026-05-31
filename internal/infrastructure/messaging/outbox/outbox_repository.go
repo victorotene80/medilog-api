@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/victorotene80/authentication_api/internal/application/messaging"
-	appmsg "github.com/victorotene80/authentication_api/internal/application/messaging"
+	"github.com/victorotene80/medilog-api/internal/application/messaging"
+	appmsg "github.com/victorotene80/medilog-api/internal/application/messaging"
 )
 
 type OutboxRepository interface {

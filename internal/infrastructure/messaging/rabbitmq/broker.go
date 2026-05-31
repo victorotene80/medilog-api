@@ -8,8 +8,8 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
-	appmsg "github.com/victorotene80/authentication_api/internal/application/messaging"
-	broker "github.com/victorotene80/authentication_api/internal/infrastructure/messaging"
+	appmsg "github.com/victorotene80/medilog-api/internal/application/messaging"
+	broker "github.com/victorotene80/medilog-api/internal/infrastructure/messaging"
 )
 
 var _ broker.MessageBroker = (*Broker)(nil)

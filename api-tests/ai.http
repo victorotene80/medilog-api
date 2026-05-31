@@ -1,0 +1,85 @@
+@baseUrl = http://localhost:8080/api/v1
+
+
+### E2E 1 - Create AI Conversation With Medication And Visit Context
+POST {{baseUrl}}/ai/conversations
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Medication safety question",
+  "related_medication_public_id": "{{medicationPublicId}}",
+  "related_visit_public_id": "{{visitPublicId}}"
+}
+
+> {%
+    if (response.body && response.body.data && response.body.data.public_id) {
+        client.global.set("conversationPublicId", response.body.data.public_id);
+    }
+%}
+
+
+### E2E 2 - Send AI Message About Allergy And Medication
+POST {{baseUrl}}/ai/conversations/{{conversationPublicId}}/messages
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "message": "Based on my records, is Amoxicillin safe for me if I have a Penicillin allergy?",
+  "language": "English"
+}
+
+
+### E2E 3 - Send AI Follow-Up Message
+POST {{baseUrl}}/ai/conversations/{{conversationPublicId}}/messages
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "message": "What should I ask my doctor before taking it?",
+  "language": "English"
+}
+
+
+### E2E 4 - Get AI Conversation With Messages
+GET {{baseUrl}}/ai/conversations/{{conversationPublicId}}
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+
+### E2E 5 - List Active AI Conversations
+GET {{baseUrl}}/ai/conversations?active_only=true
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+
+### Optional - Create AI Conversation Without Related Records
+POST {{baseUrl}}/ai/conversations
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "General health record question"
+}
+
+
+### Optional - Send AI Message - Nigerian Pidgin
+POST {{baseUrl}}/ai/conversations/{{conversationPublicId}}/messages
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "message": "Explain this medicine for me based on my record.",
+  "language": "Pidgin"
+}
+
+
+### Optional Cleanup - Archive AI Conversation
+PATCH {{baseUrl}}/ai/conversations/{{conversationPublicId}}/archive
+Authorization: Bearer {{accessToken}}
+Accept: application/json

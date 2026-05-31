@@ -1,0 +1,93 @@
+MediLog API Endpoints
+Base URL: http://localhost:8080
+API prefix: /api/v1
+
+Full documentation: docs/HTTP_API.md
+
+Access levels:
+- Public: no Authorization header required.
+- Auth: requires Authorization: Bearer <access_token>.
+- Full app: requires Authorization and completed onboarding.
+
+Optional client metadata headers:
+- X-Device-ID
+- X-Device-Name
+- X-Device-Fingerprint
+
+Health
+- GET /health [Public]
+
+Auth
+- POST /api/v1/auth/register [Public]
+- POST /api/v1/auth/login [Public]
+- POST /api/v1/auth/google [Public]
+- POST /api/v1/auth/forgot-password [Public]
+- POST /api/v1/auth/reset-password [Public]
+- POST /api/v1/auth/otp/request [Public]
+- POST /api/v1/auth/otp/verify [Public]
+- POST /api/v1/auth/otp/verify-onboarding [Public]
+- POST /api/v1/auth/logout [Auth]
+- POST /api/v1/auth/change-password [Auth]
+
+Reference Data
+- GET /api/v1/reference/countries [Public]
+- GET /api/v1/reference/allergies/ [Public]
+- POST /api/v1/reference/allergies/ [Auth]
+- PUT /api/v1/reference/allergies/{id} [Auth]
+- DELETE /api/v1/reference/allergies/{id} [Auth]
+- GET /api/v1/reference/fun-facts/ [Public]
+- GET /api/v1/reference/fun-facts/{id} [Public]
+- POST /api/v1/reference/fun-facts/ [Auth]
+- PUT /api/v1/reference/fun-facts/{id} [Auth]
+- DELETE /api/v1/reference/fun-facts/{id} [Auth]
+
+Users and Onboarding
+- GET /api/v1/users/me [Auth]
+- POST /api/v1/emergency-contacts/ [Auth]
+
+Health Allergies
+- GET /api/v1/health/allergies/ [Full app]
+- POST /api/v1/health/allergies/ [Full app]
+- DELETE /api/v1/health/allergies/{publicId} [Full app]
+
+Medications
+- GET /api/v1/medications/ [Full app]
+- POST /api/v1/medications/ [Full app]
+- GET /api/v1/medications/{publicId} [Full app]
+- PUT /api/v1/medications/{publicId} [Full app]
+- DELETE /api/v1/medications/{publicId} [Full app]
+- PATCH /api/v1/medications/{publicId}/complete [Full app]
+- POST /api/v1/medications/{publicId}/adherence [Full app]
+
+Visits
+- GET /api/v1/visits/ [Full app]
+- POST /api/v1/visits/ [Full app]
+- GET /api/v1/visits/{publicId} [Full app]
+- PUT /api/v1/visits/{publicId} [Full app]
+- DELETE /api/v1/visits/{publicId} [Full app]
+
+AI Conversations
+- GET /api/v1/ai/conversations/ [Full app]
+- POST /api/v1/ai/conversations/ [Full app]
+- GET /api/v1/ai/conversations/{publicId} [Full app]
+- POST /api/v1/ai/conversations/{publicId}/messages [Full app]
+- PATCH /api/v1/ai/conversations/{publicId}/archive [Full app]
+
+Drug Verification
+- POST /api/v1/drugs/verify [Full app]
+- GET /api/v1/drugs/scans [Full app]
+- GET /api/v1/drugs/scans/{publicId} [Full app]
+
+Dashboard
+- GET /api/v1/dashboard [Full app]
+
+Example request:
+curl -X POST "http://localhost:8080/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -H "X-Device-ID: ios-device-001" \
+  -H "X-Device-Name: iPhone 15" \
+  -H "X-Device-Fingerprint: demo-fingerprint" \
+  -d '{
+    "email": "victor@example.com",
+    "password": "Password123!"
+  }'

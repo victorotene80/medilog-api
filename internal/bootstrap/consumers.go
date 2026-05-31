@@ -3,7 +3,7 @@ package bootstrap
 import (
 	"context"
 
-	"github.com/victorotene80/authentication_api/internal/application/messaging"
+	"github.com/victorotene80/medilog-api/internal/application/messaging"
 	"go.uber.org/zap"
 )
 

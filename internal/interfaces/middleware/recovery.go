@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	"github.com/victorotene80/authentication_api/internal/interfaces/http/rest/response"
+	"github.com/victorotene80/medilog-api/internal/interfaces/http/rest/response"
 	"go.uber.org/zap"
 )
 

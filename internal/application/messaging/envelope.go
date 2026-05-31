@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/victorotene80/authentication_api/internal/domain/events"
+	"github.com/victorotene80/medilog-api/internal/domain/events"
 )
 
 type Kind string
@@ -18,7 +18,7 @@ type Envelope struct {
 	ID            string            `json:"id"`
 	Name          string            `json:"name"`
 	Kind          Kind              `json:"kind"`
-	AggregateID   string            `json:"aggregate_id"`
+	AggregateID   int64             `json:"aggregate_id"`
 	AggregateType string            `json:"aggregate_type"`
 	OccurredAt    time.Time         `json:"occurred_at"`
 	Payload       []byte            `json:"payload"`

@@ -3,7 +3,7 @@ package messaging
 import (
 	"context"
 
-	appmsg "github.com/victorotene80/authentication_api/internal/application/messaging"
+	appmsg "github.com/victorotene80/medilog-api/internal/application/messaging"
 )
 
 type HandlerFunc func(ctx context.Context, envelope appmsg.Envelope) error

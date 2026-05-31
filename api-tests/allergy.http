@@ -1,0 +1,90 @@
+@baseUrl = http://localhost:8080/api/v1
+
+
+### E2E 1 - List Master Drug Allergies
+GET {{baseUrl}}/reference/allergies/?category=2
+Accept: application/json
+
+> {%
+    const data = response.body && response.body.data ? response.body.data : [];
+    const item = data.find(function (a) { return a.name === "Penicillin"; });
+    if (item) {
+        client.global.set("allergyId", item.id);
+    }
+%}
+
+
+### E2E 2 - Add My Custom Drug Allergy
+POST {{baseUrl}}/health/allergies/
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "allergies": [
+    {
+      "name": "Penicillin",
+      "category": 2,
+      "severity": 4,
+      "description": "Causes breathing difficulty and facial swelling."
+    }
+  ]
+}
+
+
+### E2E 3 - List My Allergies And Capture Penicillin
+GET {{baseUrl}}/health/allergies/
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+> {%
+    const data = response.body && response.body.data ? response.body.data : [];
+    const item = data.find(function (a) { return a.name === "Penicillin"; });
+    if (item) {
+        client.global.set("userAllergyPublicId", item.id);
+    }
+%}
+
+
+### E2E 4 - List My Drug Allergies
+GET {{baseUrl}}/health/allergies/?category=2
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+
+### Optional - Add Master Allergy
+POST {{baseUrl}}/reference/allergies/
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Penicillin",
+  "category": 2,
+  "description": "Drug allergy to penicillin-class antibiotics."
+}
+
+
+### Optional - Add My Allergy From Captured Master Allergy
+POST {{baseUrl}}/health/allergies/
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "allergies": [
+    {
+      "allergy_id": {{allergyId}},
+      "name": "Penicillin",
+      "category": 2,
+      "severity": 4,
+      "description": "Causes breathing difficulty and facial swelling."
+    }
+  ]
+}
+
+
+### Optional Cleanup - Delete My Allergy
+DELETE {{baseUrl}}/health/allergies/{{userAllergyPublicId}}
+Authorization: Bearer {{accessToken}}
+Accept: application/json

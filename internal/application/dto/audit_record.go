@@ -1,34 +1,29 @@
 package dto
 
+import "time"
+
 type AuditAction string
 
 const (
-	AuditActionLoginSuccess        AuditAction = "login_success"
-	AuditActionLoginFailed         AuditAction = "login_failed"
-	AuditActionLogout              AuditAction = "logout"
-	AuditActionSessionRevoked      AuditAction = "session_revoked"
-	AuditActionSessionCreated      AuditAction = "session_created"
-	AuditActionSessionRotated      AuditAction = "session_rotated"
-	AuditActionPasswordChanged     AuditAction = "password_changed"
-	AuditActionPasswordResetReq    AuditAction = "password_reset_requested"
-	AuditActionPasswordResetDone   AuditAction = "password_reset_completed"
-	AuditActionEmailVerified       AuditAction = "email_verified"
-	AuditActionSuspiciousActivity  AuditAction = "suspicious_activity"
+	AuditActionLoginSuccess    AuditAction = "login.success"
+	AuditActionLoginFailed     AuditAction = "login.failed"
+	AuditActionLogout          AuditAction = "logout"
+	AuditActionPasswordChanged AuditAction = "password.changed"
+	AuditActionPasswordReset   AuditAction = "password.reset"
+	AuditActionOTPRequested    AuditAction = "otp.requested"
+	AuditActionOTPVerified     AuditAction = "otp.verified"
 )
 
 type AuditRecord struct {
-	Action AuditAction
-	UserID    *string
-	ActorID   *string
-	APIKeyID  *string
-	SessionID *string
-	OrganizationID *string
+	Action      AuditAction
+	UserID      *string
+	ActorID     *string
+	SessionID   *string
 	IPAddress   *string
 	UserAgent   *string
 	CountryCode *string
-	TargetResource *string
-	TargetID       *string
-	Metadata map[string]any
-	Success       bool
-	FailureReason *string
+	TargetID    *string
+	Metadata    map[string]any
+	Success     bool
+	OccurredAt  time.Time
 }

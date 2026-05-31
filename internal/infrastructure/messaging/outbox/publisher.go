@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	appContracts "github.com/victorotene80/authentication_api/internal/application/contracts"
-	appmsg "github.com/victorotene80/authentication_api/internal/application/messaging"
-	"github.com/victorotene80/authentication_api/internal/domain/events"
+	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
+	appmsg "github.com/victorotene80/medilog-api/internal/application/messaging"
+	"github.com/victorotene80/medilog-api/internal/domain/events"
 )
 
 var _ appContracts.MessagePublisher = (*Publisher)(nil)

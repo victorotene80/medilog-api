@@ -1,91 +1,82 @@
 package handlers
 
-/*import (
+import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
-	"github.com/victorotene80/authentication_api/internal/application/command"
-	appContracts "github.com/victorotene80/authentication_api/internal/application/contracts"
-	"github.com/victorotene80/authentication_api/internal/application/dto"
-	"github.com/victorotene80/authentication_api/internal/application/messaging"
-	"github.com/victorotene80/authentication_api/internal/domain/repository"
+	"github.com/victorotene80/medilog-api/internal/application/command"
+	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
+	"github.com/victorotene80/medilog-api/internal/application/dto"
+	"github.com/victorotene80/medilog-api/internal/domain/repository"
+	"github.com/victorotene80/medilog-api/internal/shared/requestmeta"
 )
 
 type LogoutHandler struct {
-	uow         appContracts.UnitOfWork
-	sessionRepo repository.SessionRepository
-	publisher   appContracts.MessagePublisher
-	clock       func() time.Time
+	refreshRepo  repository.RefreshTokenRepository
+	sessionCache appContracts.Cache[string, appContracts.CachedToken]
+	auditLogger  appContracts.AuditLogger
+	clock        func() time.Time
 }
 
 func NewLogoutHandler(
-	uow appContracts.UnitOfWork,
-	sessionRepo repository.SessionRepository,
-	publisher appContracts.MessagePublisher,
+	refreshRepo repository.RefreshTokenRepository,
+	sessionCache appContracts.Cache[string, appContracts.CachedToken],
+	auditLogger appContracts.AuditLogger,
 	clock func() time.Time,
 ) *LogoutHandler {
+	if clock == nil {
+		clock = func() time.Time { return time.Now().UTC() }
+	}
 	return &LogoutHandler{
-		uow:         uow,
-		sessionRepo: sessionRepo,
-		publisher:   publisher,
-		clock:       clock,
+		refreshRepo:  refreshRepo,
+		sessionCache: sessionCache,
+		auditLogger:  auditLogger,
+		clock:        clock,
 	}
 }
 
-func (h *LogoutHandler) Handle(ctx context.Context, cmd command.LogoutCommand) (*dto.LogoutDTO, error) {
-	var result *dto.LogoutDTO
-	err := h.uow.WithinTransaction(ctx, func(txCtx context.Context) error {
-		now := h.clock()
-		session, err := h.sessionRepo.FindByID(txCtx, cmd.SessionID)
-		if err != nil {
-			return fmt.Errorf("session not found: %w", err)
-		}
+func (h *LogoutHandler) Handle(ctx context.Context, cmd command.LogoutCommand) (struct{}, error) {
+	now := h.clock()
+	meta, _ := requestmeta.FromContext(ctx)
 
-		if session.UserID() != cmd.UserID {
-			return fmt.Errorf("session does not belong to user")
-		}
-
-		if !session.IsRevoked() {
-			reason := cmd.Reason
-			if reason == "" {
-				reason = "user logout"
-			}
-			if err := session.Revoke(now, reason); err != nil {
-				return fmt.Errorf("cannot revoke session: %w", err)
-			}
-			if err := h.sessionRepo.Save(txCtx, session); err != nil {
-				return fmt.Errorf("failed to save session: %w", err)
-			}
-		}
-
-		meta := messaging.Context{
-			Aggregate: "session",
-			Action:    "revoked",
-			IPAddress: cmd.IPAddress,
-			UserAgent: cmd.UserAgent,
-			DeviceID:  cmd.DeviceID,
-		}
-
-		if err := h.publisher.Publish(txCtx, session.PullEvents(), meta.ToMetadata()); err != nil {
-			return fmt.Errorf("failed to publish events: %w", err)
-		}
-
-		session.ClearEvents()
-
-		result = &dto.LogoutDTO{
-			SessionID: session.ID(),
-			Status:    "SUCCESS",
-			Reason:    cmd.Reason,
-			Time:      now,
-		}
-
-		return nil
-	})
-
+	rtID, err := strconv.ParseInt(cmd.SessionID, 10, 64)
 	if err != nil {
-		return nil, err
+		return struct{}{}, fmt.Errorf("invalid session ID")
 	}
 
-	return result, nil
-}*/
+	rt, err := h.refreshRepo.FindByID(ctx, rtID)
+	if err != nil || rt == nil {
+		return struct{}{}, nil // idempotent — already gone is fine
+	}
+
+	if !rt.IsRevoked() {
+		rt.Revoke(now, nil)
+		if err := h.refreshRepo.Update(ctx, rt); err != nil {
+			return struct{}{}, fmt.Errorf("revoke session: %w", err)
+		}
+	}
+
+	if h.sessionCache != nil {
+		_ = h.sessionCache.Delete(ctx, cmd.SessionID)
+	}
+
+	if h.auditLogger != nil {
+		userID := cmd.UserID
+		userIDText := strconv.FormatInt(userID, 10)
+		sessionID := cmd.SessionID
+		_ = h.auditLogger.Log(ctx, dto.AuditRecord{
+			Action:     dto.AuditActionLogout,
+			UserID:     &userIDText,
+			ActorID:    &userIDText,
+			SessionID:  &sessionID,
+			IPAddress:  &meta.IPAddress,
+			UserAgent:  &meta.UserAgent,
+			Success:    true,
+			OccurredAt: now,
+		})
+	}
+
+	return struct{}{}, nil
+}

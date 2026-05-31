@@ -3,44 +3,42 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
-	"github.com/victorotene80/authentication_api/internal/application/command"
-	appContracts "github.com/victorotene80/authentication_api/internal/application/contracts"
-	"github.com/victorotene80/authentication_api/internal/application/dto"
-	"github.com/victorotene80/authentication_api/internal/application/messaging"
-	"github.com/victorotene80/authentication_api/internal/domain/aggregates"
-	"github.com/victorotene80/authentication_api/internal/domain/contracts"
-	"github.com/victorotene80/authentication_api/internal/domain/repository"
-	"github.com/victorotene80/authentication_api/internal/domain/services"
-	"github.com/victorotene80/authentication_api/internal/domain/valueobjects"
+	"github.com/victorotene80/medilog-api/internal/application/command"
+	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
+	"github.com/victorotene80/medilog-api/internal/application/dto"
+	"github.com/victorotene80/medilog-api/internal/application/messaging"
+	"github.com/victorotene80/medilog-api/internal/domain/aggregates"
+	"github.com/victorotene80/medilog-api/internal/domain/contracts"
+	"github.com/victorotene80/medilog-api/internal/domain/repository"
+	domainServices "github.com/victorotene80/medilog-api/internal/domain/services"
+	"github.com/victorotene80/medilog-api/internal/domain/valueobjects"
+	"github.com/victorotene80/medilog-api/internal/shared/requestmeta"
 )
 
 type LoginHandler struct {
-	uow            appContracts.UnitOfWork
-	userRepo       repository.UserRepository
+	userRepo       repository.UserAggregateRepository
 	passwordHasher contracts.PasswordHasher
 	sessionService appContracts.SessionService
-	lockService    *services.AccountLockService
+	lockService    *domainServices.AccountLockService
 	eventPublisher appContracts.MessagePublisher
 	clock          func() time.Time
 }
 
 func NewLoginHandler(
-	uow appContracts.UnitOfWork,
-	userRepo repository.UserRepository,
+	userRepo repository.UserAggregateRepository,
 	passwordHasher contracts.PasswordHasher,
 	sessionService appContracts.SessionService,
-	lockService *services.AccountLockService,
+	lockService *domainServices.AccountLockService,
 	eventPublisher appContracts.MessagePublisher,
 	clock func() time.Time,
 ) *LoginHandler {
 	if clock == nil {
 		clock = func() time.Time { return time.Now().UTC() }
 	}
-
 	return &LoginHandler{
-		uow:            uow,
 		userRepo:       userRepo,
 		passwordHasher: passwordHasher,
 		sessionService: sessionService,
@@ -54,99 +52,76 @@ func (h *LoginHandler) Handle(
 	ctx context.Context,
 	cmd command.LoginCommand,
 ) (*dto.LoginResultDTO, error) {
-
 	now := h.clock()
+	meta, _ := requestmeta.FromContext(ctx)
 
-	email, err := valueobjects.NewEmail(cmd.Email)
-	if err != nil {
+	agg, err := h.resolveUser(ctx, cmd)
+	if err != nil || agg == nil {
 		return nil, errors.New("invalid credentials")
 	}
 
-	var (
-		userAgg   *aggregates.UserAggregate
-		lastLogin *time.Time
-	)
+	if agg.IsLocked(now) {
+		return nil, errors.New("account is locked")
+	}
 
-	if err := h.uow.WithinTransaction(ctx, func(txCtx context.Context) error {
-		agg, err := h.userRepo.FindByEmail(txCtx, email)
-		if err != nil {
-			return errors.New("invalid credentials")
+	if agg.User.PasswordHash == nil || !h.passwordHasher.Verify(cmd.Password, *agg.User.PasswordHash) {
+		var lockedUntil *time.Time
+		if h.lockService.ShouldLock(agg.User.FailedLoginAttempts + 1) {
+			t := h.lockService.ComputeLockedUntil(now)
+			lockedUntil = &t
 		}
+		agg.RecordFailedLogin(lockedUntil, now)
 
-		userAgg = agg
-		user := agg.User
-
-		if !userAgg.EnsureNotLocked(now, h.lockService) {
-			return errors.New("account is locked")
+		if err := h.userRepo.Update(ctx, agg); err != nil {
+			return nil, err
 		}
+		return nil, errors.New("invalid credentials")
+	}
 
-		if !h.passwordHasher.Verify(cmd.Password, user.Password().Value()) {
-			userAgg.RecordFailedLogin(now, h.lockService)
+	lastLogin := agg.User.LastLoginAt
+	agg.RecordSuccessfulLogin(meta.IPAddress, now)
 
-			if err := h.userRepo.Update(txCtx, userAgg); err != nil {
-				return err
-			}
+	if err := h.userRepo.Update(ctx, agg); err != nil {
+		return nil, err
+	}
 
-			return errors.New("invalid credentials")
-		}
-
-		userAgg.RecordLogin(now, cmd.IPAddress)
-		lastLogin = user.LastLoginAt()
-
-		if err := h.userRepo.Update(txCtx, userAgg); err != nil {
-			return err
-		}
-
-		/*meta := messaging.Context{
-			Aggregate: "user",
-			Action:    "login",
-			IPAddress: cmd.IPAddress,
-			UserAgent: cmd.UserAgent,
-			DeviceID:  cmd.DeviceID,
-		}*/
-
-		meta := messaging.Context{
+	if h.eventPublisher != nil {
+		eventMeta := messaging.Context{
 			Kind:          messaging.KindIntegrationEvent,
 			Name:          "auth.user.login-recorded.v1",
 			AggregateType: "user",
 			Action:        "login",
-			IPAddress:     cmd.IPAddress,
-			UserAgent:     cmd.UserAgent,
-			DeviceID:      cmd.DeviceID,
+			IPAddress:     &meta.IPAddress,
+			UserAgent:     &meta.UserAgent,
+			DeviceID:      &meta.DeviceID,
 		}
-
 		if err := h.eventPublisher.Publish(
-			txCtx,
-			userAgg.PullEvents(),
-			meta.ToMetadata(),
+			ctx,
+			agg.PullEvents(),
+			eventMeta.ToMetadata(),
 		); err != nil {
-			return err
+			return nil, fmt.Errorf("publish login events: %w", err)
 		}
-
-		userAgg.ClearEvents()
-		return nil
-	}); err != nil {
-		return nil, err
+		agg.ClearEvents()
 	}
 
 	sessionResult, err := h.sessionService.Create(
 		ctx,
-		userAgg.User.ID(),
-		cmd.IPAddress,
-		cmd.UserAgent,
-		cmd.DeviceID,
-		cmd.DeviceFingerprint,
-		cmd.DeviceName,
+		fmt.Sprintf("%d", agg.User.ID),
+		meta.IPAddress,
+		meta.UserAgent,
+		meta.DeviceID,
+		meta.DeviceFingerprint,
+		meta.DeviceName,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	result := &dto.LoginResultDTO{
+	return &dto.LoginResultDTO{
 		Status:      "SUCCESS",
-		MFARequired: false,     // wire MFA later if you want
-		LastLogin:   lastLogin, // may be nil if first login
-		ChallengeID: nil,       // for MFA
+		LastLogin:   lastLogin,
+		ChallengeID: nil,
 		Tokens: contracts.TokenPair{
 			AccessToken: contracts.Token{
 				Value:     sessionResult.AccessToken.Value,
@@ -157,7 +132,28 @@ func (h *LoginHandler) Handle(
 				ExpiresAt: sessionResult.RefreshToken.ExpiresAt,
 			},
 		},
+		OnboardingCompleted: agg.User.IsOnboardingCompleted,
+		RequiresOnboarding:  !agg.User.IsOnboardingCompleted,
+	}, nil
+}
+
+func (h *LoginHandler) resolveUser(
+	ctx context.Context,
+	cmd command.LoginCommand,
+) (*aggregates.UserAggregate, error) {
+	if cmd.Email != nil {
+		if _, err := valueobjects.NewEmail(*cmd.Email); err != nil {
+			return nil, nil
+		}
+		return h.userRepo.FindByEmail(ctx, *cmd.Email)
 	}
 
-	return result, nil
+	if cmd.Phone != nil {
+		if _, err := valueobjects.NewPhone(*cmd.Phone); err != nil {
+			return nil, nil
+		}
+		return h.userRepo.FindByPhone(ctx, *cmd.Phone)
+	}
+
+	return nil, nil // neither field set — caller gets "invalid credentials"
 }

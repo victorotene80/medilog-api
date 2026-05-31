@@ -1,0 +1,280 @@
+{
+  "uid": "medilog-observability",
+  "title": "Medilog Observability",
+  "tags": ["medilog", "loki", "prometheus", "tempo"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Prometheus Target Health",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up",
+          "legendFormat": "{{job}}"
+        }
+      ],
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Collector Accepted Spans/sec",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(otelcol_receiver_accepted_spans_total[5m])",
+          "legendFormat": "{{receiver}}"
+        }
+      ],
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 }
+    },
+    {
+      "id": 3,
+      "title": "OTEL Logs Received by Collector",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(otelcol_receiver_accepted_log_records_total[5m])",
+          "legendFormat": "{{receiver}}"
+        }
+      ],
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 }
+    },
+    {
+      "id": 4,
+      "title": "Collector Sent Spans/sec",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(otelcol_exporter_sent_spans_total[5m])",
+          "legendFormat": "{{exporter}}"
+        }
+      ],
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 6 }
+    },
+    {
+      "id": 5,
+      "title": "OTEL Logs Sent to Loki",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(otelcol_exporter_sent_log_records_total[5m])",
+          "legendFormat": "{{exporter}}"
+        }
+      ],
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 6 }
+    },
+    {
+      "id": 6,
+      "title": "Log Volume by Service",
+      "type": "timeseries",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (service) (count_over_time({environment=\"local\"}[5m]))"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 }
+    },
+    {
+      "id": 7,
+      "title": "Error Logs by Service",
+      "type": "timeseries",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (service) (count_over_time({environment=\"local\"} |~ \"(?i)error|fatal|panic|failed|exception\" [5m]))"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 }
+    },
+    {
+      "id": 8,
+      "title": "Recent Docker Service Logs",
+      "type": "logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{environment=\"local\"}"
+        }
+      ],
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 21 },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 9,
+      "title": "Medilog API Traces",
+      "type": "table",
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"medilog-api\" }"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 31 }
+    },
+    {
+      "id": 10,
+      "title": "Slow Medilog API Traces",
+      "type": "table",
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"medilog-api\" && duration > 100ms }"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 31 }
+    },
+    {
+      "id": 11,
+      "title": "Top Noisy Services",
+      "type": "bargauge",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(5, sum by (service) (count_over_time({environment=\"local\"}[5m])))"
+        }
+      ],
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 39 },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true
+      }
+    },
+    {
+      "id": 12,
+      "title": "Loki Error Logs",
+      "type": "logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{environment=\"local\"} |~ \"(?i)error|fatal|panic|failed|exception\""
+        }
+      ],
+      "gridPos": { "h": 7, "w": 16, "x": 8, "y": 39 },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 13,
+      "title": "API Trace Rate",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(otelcol_receiver_accepted_spans_total{receiver=\"otlp\"}[5m]))",
+          "legendFormat": "api traces/sec"
+        }
+      ],
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 46 }
+    },
+    {
+      "id": 14,
+      "title": "Tempo Export Failures",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(otelcol_exporter_send_failed_spans_total[5m])",
+          "legendFormat": "{{exporter}}"
+        }
+      ],
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 46 }
+    },
+    {
+      "id": 15,
+      "title": "Loki Export Failures",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(otelcol_exporter_send_failed_log_records_total[5m])",
+          "legendFormat": "{{exporter}}"
+        }
+      ],
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 46 }
+    },
+    {
+      "id": 16,
+      "title": "Medilog API OTEL Logs",
+      "type": "logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service_name=\"medilog-api\"}"
+        }
+      ],
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 53 },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    }
+  ]
+}

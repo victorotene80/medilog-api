@@ -8,8 +8,8 @@ import (
 
 	kafkago "github.com/segmentio/kafka-go"
 
-	appmsg "github.com/victorotene80/authentication_api/internal/application/messaging"
-	broker "github.com/victorotene80/authentication_api/internal/infrastructure/messaging"
+	appmsg "github.com/victorotene80/medilog-api/internal/application/messaging"
+	broker "github.com/victorotene80/medilog-api/internal/infrastructure/messaging"
 )
 
 var _ broker.MessageBroker = (*Broker)(nil)
@@ -52,7 +52,7 @@ func (b *Broker) Publish(ctx context.Context, envelope appmsg.Envelope) error {
 
 	err = b.writer.WriteMessages(ctx, kafkago.Message{
 		Topic: topic,
-		Key:   []byte(envelope.AggregateID),
+		Key:   []byte(fmt.Sprintf("%d", envelope.AggregateID)),
 		Value: payload,
 		Time:  envelope.OccurredAt,
 		Headers: []kafkago.Header{

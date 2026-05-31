@@ -1,28 +1,22 @@
 package valueobjects
 
 import (
-	"github.com/victorotene80/authentication_api/internal/domain"
+	"errors"
+	"strings"
 )
 
-type Password struct {
-	value string
-}
+type PasswordHash string
 
-func NewHashedPassword(hash string) (Password, error) {
-	if hash == "" {
-		return Password{}, domain.ErrInvalidPasswordHash
+func NewPasswordHash(value string) (PasswordHash, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", errors.New("password hash is required")
 	}
-	return Password{value: hash}, nil
+	return PasswordHash(value), nil
 }
 
-func EmptyPassword() Password {
-	return Password{value: ""}
-}
+func (p PasswordHash) String() string { return string(p) }
 
-func (p Password) Value() string {
-	return p.value
-}
-
-func (p Password) IsEmpty() bool {
-	return p.value == ""
+func PasswordHashFromString(s string) PasswordHash {
+	return PasswordHash(s)
 }

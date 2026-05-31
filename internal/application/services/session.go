@@ -2,65 +2,51 @@ package services
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"time"
 
-	appContracts "github.com/victorotene80/authentication_api/internal/application/contracts"
-	"github.com/victorotene80/authentication_api/internal/application/dto"
-	"github.com/victorotene80/authentication_api/internal/domain/aggregates"
-	domainContracts "github.com/victorotene80/authentication_api/internal/domain/contracts"
-	"github.com/victorotene80/authentication_api/internal/domain/repository"
-	"github.com/victorotene80/authentication_api/internal/domain/services/policy"
-	"github.com/victorotene80/authentication_api/internal/domain/valueobjects"
-	"github.com/victorotene80/authentication_api/internal/infrastructure/persistence/cache"
-	"github.com/victorotene80/authentication_api/internal/shared/utils"
+	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
+	domainContracts "github.com/victorotene80/medilog-api/internal/domain/contracts"
+	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/repository"
+	"github.com/victorotene80/medilog-api/internal/domain/services"
+	"github.com/victorotene80/medilog-api/internal/domain/services/policy"
 )
 
-var _ appContracts.SessionService = (*sessionService)(nil)
+var _ appContracts.SessionService = (*SessionService)(nil)
 
-type sessionService struct {
-	sessionRepo    repository.SessionRepository
-	tokenGen       domainContracts.TokenGenerator
-	uow            appContracts.UnitOfWork
-	hasher         *utils.SessionKeyHasher
-	policy         policy.SessionPolicy
-	clock          func() time.Time
-	eventPublisher appContracts.MessagePublisher
-	geoIP          appContracts.GeoIPService
-	sessionCache   appContracts.Cache[string, cache.CachedSession]
-	auditLogger    appContracts.AuditLogger
+type SessionService struct {
+	refreshTokenRepo repository.RefreshTokenRepository
+	tokenGen         domainContracts.TokenGenerator
+	hasher           *services.SessionKeyHasher
+	policy           policy.SessionPolicy
+	tokenCache       appContracts.Cache[string, appContracts.CachedToken]
+	clock func() time.Time
 }
 
 func NewSessionService(
-	sessionRepo repository.SessionRepository,
+	refreshTokenRepo repository.RefreshTokenRepository,
 	tokenGen domainContracts.TokenGenerator,
-	uow appContracts.UnitOfWork,
-	hasher *utils.SessionKeyHasher,
+	hasher *services.SessionKeyHasher,
 	policy policy.SessionPolicy,
+	tokenCache appContracts.Cache[string, appContracts.CachedToken],
 	clock func() time.Time,
-	eventPublisher appContracts.MessagePublisher,
-	geoIP appContracts.GeoIPService,
-	sessionCache appContracts.Cache[string, cache.CachedSession],
-	auditLogger appContracts.AuditLogger,
-) appContracts.SessionService {
+) *SessionService {
 	if clock == nil {
 		clock = func() time.Time { return time.Now().UTC() }
 	}
-
-	return &sessionService{
-		sessionRepo:    sessionRepo,
-		tokenGen:       tokenGen,
-		uow:            uow,
-		hasher:         hasher,
-		policy:         policy,
-		clock:          clock,
-		eventPublisher: eventPublisher,
-		geoIP:          geoIP,
-		sessionCache:   sessionCache,
-		auditLogger:    auditLogger,
+	return &SessionService{
+		refreshTokenRepo: refreshTokenRepo,
+		tokenGen:         tokenGen,
+		hasher:           hasher,
+		policy:           policy,
+		tokenCache:       tokenCache,
+		clock: clock,
 	}
 }
 
-func (s *sessionService) Create(
+func (s *SessionService) Create(
 	ctx context.Context,
 	userID string,
 	ipAddress string,
@@ -69,152 +55,74 @@ func (s *sessionService) Create(
 	deviceFingerprint string,
 	deviceName string,
 ) (appContracts.SessionResult, error) {
-
 	now := s.clock()
-	sessionExpiresAt := s.policy.ComputeExpiresAt(now)
-
-	var countryCode, city string
-	if s.geoIP != nil && ipAddress != "" {
-		if cc, cty, err := s.geoIP.Lookup(ctx, ipAddress); err == nil {
-			countryCode, city = cc, cty
-		}
-	}
-
-	rawSessionKey, err := utils.GenerateRandomString(32)
+	userIDInt, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
-		return appContracts.SessionResult{}, err
+		return appContracts.SessionResult{}, fmt.Errorf("invalid userID: %w", err)
 	}
 
-	hashedSessionKey := s.hasher.Hash(rawSessionKey)
-	tokenHashVO, err := valueobjects.NewSessionTokenHash(hashedSessionKey)
+	rawToken, err := services.GenerateRandomString(32)
 	if err != nil {
-		return appContracts.SessionResult{}, err
+		return appContracts.SessionResult{}, fmt.Errorf("generate session token: %w", err)
+	}
+	tokenHash := s.hasher.Hash(rawToken)
+
+	refreshEntity := &entities.RefreshToken{
+		UserID:      userIDInt,
+		TokenHash:   tokenHash,
+		ExpiresAt:   now.Add(s.policy.RefreshTokenDuration),
+		DateCreated: now,
 	}
 
-	var result appContracts.SessionResult
+	if deviceID != "" {
+		refreshEntity.DeviceID = &deviceID
+	}
+	if deviceName != "" {
+		refreshEntity.DeviceName = &deviceName
+	}
+	if ipAddress != "" {
+		refreshEntity.IPAddress = &ipAddress
+	}
+	if userAgent != "" {
+		refreshEntity.UserAgent = &userAgent
+	}
+	if deviceFingerprint != "" {
+		refreshEntity.DeviceFingerprint = &deviceFingerprint
+	}
 
-	err = s.uow.WithinTransaction(ctx, func(txCtx context.Context) error {
-		session, err := aggregates.NewSession(
-			userID,
-			tokenHashVO,
-			nil,
-			ipAddress,
-			userAgent,
-			deviceFingerprint,
-			deviceName,
-			countryCode,
-			city,
-			now,
-			sessionExpiresAt,
-		)
-		if err != nil {
-			return err
-		}
+	if err := s.refreshTokenRepo.Save(ctx, refreshEntity); err != nil {
+		return appContracts.SessionResult{}, fmt.Errorf("save refresh token: %w", err)
+	}
 
-		accessToken, err := s.tokenGen.GenerateAccess(
-			userID,
-			session.ID(),
-			s.policy.MaxDuration,
-		)
-		if err != nil {
-			return err
-		}
+	sessionID := fmt.Sprintf("%d", refreshEntity.ID)
 
-		var refreshToken domainContracts.Token
-		if s.policy.AllowRefreshToken {
-			refreshToken, err = s.tokenGen.GenerateRefresh(
-				userID,
-				session.ID(),
-				s.policy.RefreshTokenDuration,
-			)
-			if err != nil {
-				return err
-			}
+	accessToken, err := s.tokenGen.GenerateAccess(userID, sessionID, s.policy.MaxDuration)
+	if err != nil {
+		return appContracts.SessionResult{}, fmt.Errorf("generate access token: %w", err)
+	}
 
-			hashedRefresh := s.hasher.Hash(refreshToken.Value)
-			refreshHashVO, err := valueobjects.NewSessionTokenHash(hashedRefresh)
-			if err != nil {
-				return err
-			}
-			session.SetRefreshTokenHash(refreshHashVO)
-		}
+	refreshToken, err := s.tokenGen.GenerateRefresh(userID, sessionID, s.policy.RefreshTokenDuration)
+	if err != nil {
+		return appContracts.SessionResult{}, fmt.Errorf("generate refresh token jwt: %w", err)
+	}
 
-		if err := s.sessionRepo.Save(txCtx, session); err != nil {
-			return err
-		}
-
-		/*if err := s.eventPublisher.Publish(
-			txCtx,
-			session.PullEvents(),
-			map[string]string{
-				"aggregate":       "session",
-				"action":          "created",
-				"ip":              ipAddress,
-				"user_agent":      userAgent,
-				"device_id":       deviceID,
-				"fingerprint":     deviceFingerprint,
-				"device_name":     deviceName,
-				"country_code":    countryCode,
-				"city":            city,
-				"session_expires": sessionExpiresAt.UTC().Format(time.RFC3339),
-			},
-		); err != nil {
-			return err
-		}*/
-
-		session.ClearEvents()
-
-		result = appContracts.SessionResult{
-			SessionID:    session.ID(),
-			AccessToken:  accessToken,
-			RefreshToken: refreshToken,
+	if s.tokenCache != nil {
+		cached := &appContracts.CachedToken{
+			UserID:       userID,
+			SessionID:    sessionID,
+			AccessToken:  accessToken.Value,
+			RefreshToken: refreshToken.Value,
 			ExpiresAt:    accessToken.ExpiresAt,
 		}
-
-		if s.sessionCache != nil {
-			cached := cache.MapAggregateToCached(session)
-			_ = s.sessionCache.Set(txCtx, session.TokenHash().Value(), &cached)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return appContracts.SessionResult{}, err
+		// cache key is sessionID — lets auth middleware do O(1) lookups
+		// ignore cache errors; a cache miss falls back to DB validation
+		_ = s.tokenCache.Set(ctx, sessionID, cached)
 	}
 
-	if s.auditLogger != nil {
-		userIDCopy := userID
-		sessionIDCopy := result.SessionID
-		ipCopy := ipAddress
-		uaCopy := userAgent
-		countryCopy := countryCode
-
-		meta := map[string]any{
-			"device_id":       deviceID,
-			"device_name":     deviceName,
-			"fingerprint":     deviceFingerprint,
-			"city":            city,
-			"session_expires": result.ExpiresAt.UTC().Format(time.RFC3339),
-		}
-
-		rec := dto.AuditRecord{
-			Action:    dto.AuditActionLoginSuccess,
-			UserID:    &userIDCopy,
-			ActorID:   &userIDCopy,
-			SessionID: &sessionIDCopy,
-
-			IPAddress:      &ipCopy,
-			UserAgent:      &uaCopy,
-			CountryCode:    &countryCopy,
-			TargetResource: nil,
-			TargetID:       &sessionIDCopy,
-			Metadata:       meta,
-			Success:        true,
-		}
-
-		_ = s.auditLogger.Log(ctx, rec)
-	}
-
-	return result, nil
+	return appContracts.SessionResult{
+		SessionID:    sessionID,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresAt:    accessToken.ExpiresAt,
+	}, nil
 }

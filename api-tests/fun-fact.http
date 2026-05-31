@@ -1,0 +1,82 @@
+@baseUrl = http://localhost:8080/api/v1
+@funFactTitle = Hydration and Antihistamines
+@funFactText = E2E fun fact created for CRUD verification on 2026-05-29.
+
+
+### E2E 1 - List Active Fun Facts (Public)
+GET {{baseUrl}}/reference/fun-facts/?active_only=true
+Accept: application/json
+
+
+### E2E 2 - Create Fun Fact (Auth Required)
+POST {{baseUrl}}/reference/fun-facts/
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "{{funFactTitle}}",
+  "text": "{{funFactText}}",
+  "category": "medication_safety",
+  "target_country_code": "NG",
+  "target_age_min": 18,
+  "target_age_max": 65,
+  "allergy_category": 2,
+  "is_active": true
+}
+
+
+### E2E 3 - List Fun Facts And Capture Created ID
+GET {{baseUrl}}/reference/fun-facts/
+Accept: application/json
+
+> {%
+    const data = response.body && response.body.data ? response.body.data : [];
+    const item = data.find(function (f) {
+        return f.title === "Hydration and Antihistamines" &&
+            f.text &&
+            f.text.indexOf("E2E fun fact created for CRUD verification") >= 0;
+    });
+    if (item) {
+        client.global.set("funFactId", item.id);
+    }
+%}
+
+
+### E2E 4 - Get Fun Fact By ID
+GET {{baseUrl}}/reference/fun-facts/{{funFactId}}
+Accept: application/json
+
+
+### E2E 5 - Update Fun Fact
+PUT {{baseUrl}}/reference/fun-facts/{{funFactId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "{{funFactTitle}}",
+  "text": "E2E fun fact updated for CRUD verification on 2026-05-29.",
+  "category": "allergy_prevention",
+  "target_country_code": "NG",
+  "target_age_min": 16,
+  "target_age_max": 70,
+  "allergy_category": 2,
+  "is_active": true
+}
+
+
+### E2E 6 - Verify Updated Fun Fact
+GET {{baseUrl}}/reference/fun-facts/{{funFactId}}
+Accept: application/json
+
+
+### Optional - List Only Active Fun Facts
+GET {{baseUrl}}/reference/fun-facts/?active_only=true
+Accept: application/json
+
+
+### Optional Cleanup - Delete Fun Fact
+DELETE {{baseUrl}}/reference/fun-facts/{{funFactId}}
+Authorization: Bearer {{accessToken}}
+Accept: application/json

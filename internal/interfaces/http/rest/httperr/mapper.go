@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/victorotene80/authentication_api/internal/domain"
-	appErrors "github.com/victorotene80/authentication_api/internal/application"
+	"github.com/victorotene80/medilog-api/internal/domain"
+	appErrors "github.com/victorotene80/medilog-api/internal/application"
 )
 
 func StatusFrom(err error) int {

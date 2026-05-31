@@ -5,32 +5,40 @@ import (
 	"encoding/hex"
 	"net"
 	"net/http"
+	"strings"
 
 	chiMw "github.com/go-chi/chi/v5/middleware"
 
-	"github.com/victorotene80/authentication_api/internal/interfaces/http/requestctx"
+	"github.com/victorotene80/medilog-api/internal/shared/requestmeta"
 )
 
 func RequestMetadata(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ua := r.UserAgent()
+
 		deviceID := r.Header.Get("X-Device-ID")
+		deviceName := r.Header.Get("X-Device-Name")
 		acceptLang := r.Header.Get("Accept-Language")
+
+		if deviceName == "" {
+			deviceName = ua
+		}
 
 		ip := clientIP(r)
 
-		fpRaw := ua + "|" + deviceID + "|" + acceptLang
-		fpHash := sha256.Sum256([]byte(fpRaw))
-		fingerprint := hex.EncodeToString(fpHash[:])
-
-		deviceName := ua
+		fingerprint := r.Header.Get("X-Device-Fingerprint")
+		if fingerprint == "" {
+			fpRaw := ua + "|" + deviceID + "|" + acceptLang
+			fpHash := sha256.Sum256([]byte(fpRaw))
+			fingerprint = hex.EncodeToString(fpHash[:])
+		}
 
 		reqID := chiMw.GetReqID(r.Context())
 		if reqID == "" {
 			reqID = r.Header.Get("X-Request-ID")
 		}
 
-		meta := requestctx.RequestMeta{
+		meta := requestmeta.Meta{
 			IPAddress:         ip,
 			UserAgent:         ua,
 			DeviceID:          deviceID,
@@ -39,28 +47,30 @@ func RequestMetadata(next http.Handler) http.Handler {
 			RequestID:         reqID,
 		}
 
-		ctx := requestctx.WithMeta(r.Context(), meta)
+		ctx := requestmeta.WithMeta(r.Context(), meta)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 func clientIP(r *http.Request) string {
-	// If you're behind a reverse proxy and trust X-Forwarded-For,
-	// you can uncomment this logic:
-	//
-	// if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-	//     parts := strings.Split(xff, ",")
-	//     return strings.TrimSpace(parts[0])
-	// }
-	//change this to X-Real-IP if using that header instead
-	if ip := r.Header.Get("X-Real-IP"); ip != "" {
-		return ip
+	if xRealIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); xRealIP != "" {
+		return xRealIP
+	}
+
+	if xForwardedFor := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); xForwardedFor != "" {
+		parts := strings.Split(xForwardedFor, ",")
+		if len(parts) > 0 {
+			ip := strings.TrimSpace(parts[0])
+			if ip != "" {
+				return ip
+			}
+		}
 	}
 
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		// fallback: r.RemoteAddr as-is
 		return r.RemoteAddr
 	}
+
 	return host
 }

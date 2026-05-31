@@ -3,8 +3,8 @@ package services
 import (
 	"unicode"
 
-	"github.com/victorotene80/authentication_api/internal/domain"
-	"github.com/victorotene80/authentication_api/internal/domain/services/policy"
+	"github.com/victorotene80/medilog-api/internal/domain"
+	"github.com/victorotene80/medilog-api/internal/domain/services/policy"
 )
 
 type PasswordService struct {

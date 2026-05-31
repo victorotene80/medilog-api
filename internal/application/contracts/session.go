@@ -4,17 +4,24 @@ import (
 	"context"
 	"time"
 
-	domainToken "github.com/victorotene80/authentication_api/internal/domain/contracts"
+	domainToken "github.com/victorotene80/medilog-api/internal/domain/contracts"
 )
-
 
 type SessionResult struct {
 	SessionID    string
 	AccessToken  domainToken.Token
 	RefreshToken domainToken.Token
-	ExpiresAt    time.Time 
+	ExpiresAt    time.Time
 }
 
+type CachedToken struct {
+	UserID       string
+	SessionID    string
+	AccessToken  string
+	RefreshToken string
+	ExpiresAt    time.Time
+	TokenVersion int16
+}
 
 type SessionService interface {
 	Create(

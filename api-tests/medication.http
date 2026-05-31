@@ -1,0 +1,129 @@
+@baseUrl = http://localhost:8080/api/v1
+
+
+### E2E 1 - Create Medication
+POST {{baseUrl}}/medications/
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Amoxicillin",
+  "drug_class": 1,
+  "dosage": "500mg",
+  "frequency": "twice_daily",
+  "with_food": true,
+  "prescribed_by": "Dr. Ada Okafor",
+  "facility": "Medilog Clinic",
+  "added_via": "manual",
+  "registration_number": "A4-1234",
+  "reg_country_code": "NG",
+  "start_date": "2026-05-28T08:00:00Z",
+  "end_date": "2026-06-04T08:00:00Z",
+  "notes": "E2E test medication. Take after meals.",
+  "times": [
+    {
+      "time_value": "08:00"
+    },
+    {
+      "time_value": "20:00"
+    }
+  ]
+}
+
+
+### E2E 2 - List Active Medications And Capture Amoxicillin
+GET {{baseUrl}}/medications/?active_only=true
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+> {%
+    const data = response.body && response.body.data ? response.body.data : [];
+    const item = data.find(function (m) {
+        return m.name === "Amoxicillin" &&
+            m.notes &&
+            m.notes.indexOf("E2E test medication") >= 0;
+    });
+    if (item) {
+        client.global.set("medicationPublicId", item.public_id);
+    }
+%}
+
+
+### E2E 3 - Get Medication
+GET {{baseUrl}}/medications/{{medicationPublicId}}
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+
+### E2E 4 - Update Medication
+PUT {{baseUrl}}/medications/{{medicationPublicId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Amoxicillin",
+  "drug_class": 1,
+  "dosage": "500mg",
+  "frequency": "twice_daily",
+  "with_food": true,
+  "prescribed_by": "Dr. Ada Okafor",
+  "facility": "Medilog Clinic",
+  "added_via": "manual",
+  "start_date": "2026-05-28T08:00:00Z",
+  "end_date": "2026-06-05T08:00:00Z",
+  "notes": "E2E test medication. Take after meals with plenty of water.",
+  "times": [
+    {
+      "time_value": "08:00"
+    },
+    {
+      "time_value": "20:00"
+    }
+  ]
+}
+
+
+### E2E 5 - Log Medication Adherence - Taken
+POST {{baseUrl}}/medications/{{medicationPublicId}}/adherence
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "scheduled_at": "2026-05-28T08:00:00Z",
+  "status": 1,
+  "note": "Dose taken after breakfast."
+}
+
+
+### E2E 6 - Log Medication Adherence - Missed
+POST {{baseUrl}}/medications/{{medicationPublicId}}/adherence
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "scheduled_at": "2026-05-28T20:00:00Z",
+  "status": 2,
+  "note": "Missed evening dose."
+}
+
+
+### E2E 7 - List Medications
+GET {{baseUrl}}/medications/
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+
+### Optional - Complete Medication
+PATCH {{baseUrl}}/medications/{{medicationPublicId}}/complete
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+
+### Optional Cleanup - Delete Medication
+DELETE {{baseUrl}}/medications/{{medicationPublicId}}
+Authorization: Bearer {{accessToken}}
+Accept: application/json

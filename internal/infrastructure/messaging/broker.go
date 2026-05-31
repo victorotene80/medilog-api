@@ -3,7 +3,7 @@ package messaging
 import (
 	"context"
 
-	appmsg "github.com/victorotene80/authentication_api/internal/application/messaging"
+	appmsg "github.com/victorotene80/medilog-api/internal/application/messaging"
 )
 
 type MessageBroker interface {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/victorotene80/authentication_api/internal/application"
+	"github.com/victorotene80/medilog-api/internal/application"
 )
 
 type CommandBus struct {

@@ -1,25 +1,17 @@
 package requestctx
 
-import "context"
+import (
+	"context"
 
-type key int
+	"github.com/victorotene80/medilog-api/internal/shared/requestmeta"
+)
 
-const metaKey key = iota
-
-type RequestMeta struct {
-    IPAddress         string
-    UserAgent         string
-    DeviceID          string
-    DeviceFingerprint string
-    DeviceName        string
-    RequestID         string
-}
+type RequestMeta = requestmeta.Meta
 
 func WithMeta(ctx context.Context, meta RequestMeta) context.Context {
-    return context.WithValue(ctx, metaKey, meta)
+	return requestmeta.WithMeta(ctx, meta)
 }
 
 func MetaFrom(ctx context.Context) (RequestMeta, bool) {
-    meta, ok := ctx.Value(metaKey).(RequestMeta)
-    return meta, ok
+	return requestmeta.FromContext(ctx)
 }

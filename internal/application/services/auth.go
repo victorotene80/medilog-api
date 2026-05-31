@@ -1,19 +1,19 @@
 package services
-
+/*
 import (
 	"context"
 	"time"
 
-	appErrors "github.com/victorotene80/authentication_api/internal/application"
-	appContracts "github.com/victorotene80/authentication_api/internal/application/contracts"
-	"github.com/victorotene80/authentication_api/internal/application/dto"
+	appErrors "github.com/victorotene80/medilog-api/internal/application"
+	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
+	"github.com/victorotene80/medilog-api/internal/application/dto"
 
-	"github.com/victorotene80/authentication_api/internal/infrastructure/persistence/cache"
+	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence/cache"
 
-	"github.com/victorotene80/authentication_api/internal/domain/aggregates"
-	domainContracts "github.com/victorotene80/authentication_api/internal/domain/contracts"
-	"github.com/victorotene80/authentication_api/internal/domain/repository"
-	"github.com/victorotene80/authentication_api/internal/domain/services/policy"
+	"github.com/victorotene80/medilog-api/internal/domain/aggregates"
+	domainContracts "github.com/victorotene80/medilog-api/internal/domain/contracts"
+	"github.com/victorotene80/medilog-api/internal/domain/repository"
+	"github.com/victorotene80/medilog-api/internal/domain/services/policy"
 )
 
 var _ appContracts.AuthService = (*AuthServiceImpl)(nil)
@@ -157,4 +157,4 @@ func (s *AuthServiceImpl) logLoginSuccess(
 	}
 
 	_ = s.auditLogger.Log(ctx, rec)
-}
+}*/

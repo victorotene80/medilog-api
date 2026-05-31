@@ -8,8 +8,8 @@ import (
 
 	kafkago "github.com/segmentio/kafka-go"
 
-	appmsg "github.com/victorotene80/authentication_api/internal/application/messaging"
-	consumer "github.com/victorotene80/authentication_api/internal/infrastructure/messaging"
+	appmsg "github.com/victorotene80/medilog-api/internal/application/messaging"
+	consumer "github.com/victorotene80/medilog-api/internal/infrastructure/messaging"
 )
 
 var _ consumer.MessageConsumer = (*Consumer)(nil)
