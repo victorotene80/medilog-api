@@ -99,11 +99,11 @@ func (h *VerifyOnboardingOTPHandler) Handle(
 		return nil, errors.New("invalid or expired OTP")
 	}
 
-	if otp.UserID == nil || *otp.UserID <= 0 {
+	if otp.UserID <= 0 {
 		return nil, errors.New("OTP is not linked to a user")
 	}
 
-	user, err := h.userRepository.FindByID(ctx, *otp.UserID)
+	user, err := h.userRepository.FindByID(ctx, otp.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("find user: %w", err)
 	}

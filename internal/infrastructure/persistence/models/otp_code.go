@@ -8,7 +8,7 @@ import (
 
 type OTPCodeModel struct {
 	ID        int64      `gorm:"column:id;primaryKey;autoIncrement"`
-	UserID    *int64     `gorm:"column:user_id;index"`
+	UserID    int64      `gorm:"column:user_id;not null;index"`
 	Recipient string     `gorm:"column:recipient;not null"`
 	CodeHash  string     `gorm:"column:code_hash;not null"`
 	Channel   string     `gorm:"column:channel;not null"`

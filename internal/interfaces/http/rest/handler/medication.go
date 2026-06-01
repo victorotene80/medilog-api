@@ -37,7 +37,7 @@ func NewMedicationHandler(
 //	@Security    BearerAuth
 //	@Param       body body request.CreateMedicationRequest true "Medication payload"
 //	@Success     201 {object} response.APIResponse[struct{}]
-//	@Router      /medications [post]
+//	@Router      /medications/ [post]
 func (h *MedicationHandler) CreateMedication(w http.ResponseWriter, r *http.Request) {
 	userID, ok := UserIDFrom(r.Context())
 	if !ok {
@@ -90,7 +90,7 @@ func (h *MedicationHandler) CreateMedication(w http.ResponseWriter, r *http.Requ
 //	@Security    BearerAuth
 //	@Param       active_only query bool false "Return only active medications"
 //	@Success     200 {object} response.APIResponse[[]response.MedicationResponse]
-//	@Router      /medications [get]
+//	@Router      /medications/ [get]
 func (h *MedicationHandler) ListMedications(w http.ResponseWriter, r *http.Request) {
 	userID, ok := UserIDFrom(r.Context())
 	if !ok {

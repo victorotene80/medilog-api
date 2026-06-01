@@ -144,7 +144,7 @@ func (r *UserRepository) Create(
 	}
 
 	user.ID = model.ID
-	user.PublicID = *model.PublicID
+	user.PublicID = model.PublicID
 	user.CreatedAt = model.CreatedAt
 	user.UpdatedAt = model.UpdatedAt
 

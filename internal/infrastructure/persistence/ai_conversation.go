@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/aggregates"
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
@@ -83,13 +84,47 @@ func (r *AIConversationRepository) Save(ctx context.Context, agg *aggregates.AIC
 }
 
 func (r *AIConversationRepository) Update(ctx context.Context, agg *aggregates.AIConversationAggregate) error {
-	return r.db.WithContext(ctx).Save(models.AIConversationToModel(agg.Conversation)).Error
+	if agg == nil || agg.Conversation == nil {
+		return errors.New("ai conversation is required")
+	}
+	if agg.Conversation.ID <= 0 {
+		return errors.New("ai conversation id is required")
+	}
+
+	model := models.AIConversationToModel(agg.Conversation)
+	result := r.db.WithContext(ctx).
+		Model(&models.AIConversationModel{}).
+		Where("id = ?", agg.Conversation.ID).
+		Select("*").
+		Omit("id", "public_id", "created_at", "deleted_at").
+		Updates(model)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *AIConversationRepository) Delete(ctx context.Context, id int64) error {
-	return r.db.WithContext(ctx).Model(&models.AIConversationModel{}).
+	if id <= 0 {
+		return errors.New("ai conversation id is required")
+	}
+
+	result := r.db.WithContext(ctx).Model(&models.AIConversationModel{}).
 		Where("id = ?", id).
-		UpdateColumn("status", "deleted").Error
+		Updates(map[string]any{
+			"status":     "deleted",
+			"deleted_at": time.Now().UTC(),
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *AIConversationRepository) hydrate(ctx context.Context, m *models.AIConversationModel) (*aggregates.AIConversationAggregate, error) {

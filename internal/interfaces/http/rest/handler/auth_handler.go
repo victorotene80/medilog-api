@@ -28,6 +28,18 @@ func NewAuthHandler(
 	}
 }
 
+// CreateUser godoc
+//
+//	@Summary     Register a user
+//	@Description Creates a new user account.
+//	@Tags        Auth
+//	@Accept      json
+//	@Produce     json
+//	@Param       body body request.RegisterRequest true "Registration payload"
+//	@Success     201 {object} response.APIResponse[response.CreateUserResponse]
+//	@Failure     400 {object} response.APIResponse[struct{}]
+//	@Failure     429 {object} response.APIResponse[struct{}]
+//	@Router      /auth/register [post]
 func (h *AuthHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	req, ok := decodeAndValidate[request.RegisterRequest](w, r, h.validator)
 	if !ok {
@@ -72,6 +84,19 @@ func (h *AuthHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
+// GoogleLogin godoc
+//
+//	@Summary     Authenticate with Google
+//	@Description Authenticates a user with a Google ID token.
+//	@Tags        Auth
+//	@Accept      json
+//	@Produce     json
+//	@Param       body body request.GoogleLoginRequest true "Google login payload"
+//	@Success     200 {object} response.APIResponse[response.GoogleAuthResponse]
+//	@Failure     400 {object} response.APIResponse[struct{}]
+//	@Failure     401 {object} response.APIResponse[struct{}]
+//	@Failure     429 {object} response.APIResponse[struct{}]
+//	@Router      /auth/google [post]
 func (h *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 	req, ok := decodeAndValidate[request.GoogleLoginRequest](w, r, h.validator)
 	if !ok {
@@ -108,6 +133,19 @@ func (h *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
+// Login godoc
+//
+//	@Summary     Log in
+//	@Description Logs in with email or phone plus password.
+//	@Tags        Auth
+//	@Accept      json
+//	@Produce     json
+//	@Param       body body request.LoginRequest true "Login payload"
+//	@Success     200 {object} response.APIResponse[response.LoginResponse]
+//	@Failure     400 {object} response.APIResponse[struct{}]
+//	@Failure     401 {object} response.APIResponse[struct{}]
+//	@Failure     429 {object} response.APIResponse[struct{}]
+//	@Router      /auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	req, ok := decodeAndValidate[request.LoginRequest](w, r, h.validator)
 	if !ok {
@@ -142,6 +180,18 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
+// ForgotPassword godoc
+//
+//	@Summary     Request password reset OTP
+//	@Description Sends a password reset OTP when the account can be resolved.
+//	@Tags        Auth
+//	@Accept      json
+//	@Produce     json
+//	@Param       body body request.ForgotPasswordRequest true "Forgot password payload"
+//	@Success     200 {object} response.APIResponse[struct{}]
+//	@Failure     400 {object} response.APIResponse[struct{}]
+//	@Failure     429 {object} response.APIResponse[struct{}]
+//	@Router      /auth/forgot-password [post]
 func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	req, ok := decodeAndValidate[request.ForgotPasswordRequest](w, r, h.validator)
 	if !ok {
@@ -175,6 +225,18 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
+// ResetPassword godoc
+//
+//	@Summary     Reset password
+//	@Description Resets a password with a valid password reset OTP.
+//	@Tags        Auth
+//	@Accept      json
+//	@Produce     json
+//	@Param       body body request.ResetPasswordRequest true "Reset password payload"
+//	@Success     200 {object} response.APIResponse[struct{}]
+//	@Failure     400 {object} response.APIResponse[struct{}]
+//	@Failure     429 {object} response.APIResponse[struct{}]
+//	@Router      /auth/reset-password [post]
 func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	req, ok := decodeAndValidate[request.ResetPasswordRequest](w, r, h.validator)
 	if !ok {
@@ -210,6 +272,19 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
+// ChangePassword godoc
+//
+//	@Summary     Change password
+//	@Description Changes the authenticated user's password.
+//	@Tags        Auth
+//	@Accept      json
+//	@Produce     json
+//	@Security    BearerAuth
+//	@Param       body body request.ChangePasswordRequest true "Change password payload"
+//	@Success     200 {object} response.APIResponse[struct{}]
+//	@Failure     400 {object} response.APIResponse[struct{}]
+//	@Failure     401 {object} response.APIResponse[struct{}]
+//	@Router      /auth/change-password [post]
 func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	req, ok := decodeAndValidate[request.ChangePasswordRequest](w, r, h.validator)
 	if !ok {
@@ -257,6 +332,17 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
+// Logout godoc
+//
+//	@Summary     Log out
+//	@Description Revokes the current authenticated session.
+//	@Tags        Auth
+//	@Produce     json
+//	@Security    BearerAuth
+//	@Success     200 {object} response.APIResponse[struct{}]
+//	@Failure     400 {object} response.APIResponse[struct{}]
+//	@Failure     401 {object} response.APIResponse[struct{}]
+//	@Router      /auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	userID, ok := UserIDFrom(r.Context())
 	if !ok || userID <= 0 {

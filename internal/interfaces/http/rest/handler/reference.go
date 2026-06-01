@@ -47,18 +47,8 @@ func (h *ReferenceHandler) ListCountries(w http.ResponseWriter, r *http.Request)
 	response.Success(w, http.StatusOK, "COUNTRIES_FETCHED", "Countries retrieved", &countries)
 }
 
-// ListAllergies godoc
-//
-//	@Summary     List allergy catalog
-//	@Description Returns known allergies, optionally filtered by numeric category.
-//	             Public — no authentication required.
-//	@Tags        Reference Data
-//	@Produce     json
-//	@Param       category query int false "Allergy category"
-//	@Success     200 {object} response.APIResponse[[]response.AllergyResponse]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     500 {object} response.APIResponse[struct{}]
-//	@Router      /reference/allergies [get]
+// ListAllergies is kept for compatibility with older wiring. The active route
+// is served by AllergyHandler.ListAllergies in router.go.
 func (h *ReferenceHandler) ListAllergies(w http.ResponseWriter, r *http.Request) {
 	var category *int
 	if rawCategory := r.URL.Query().Get("category"); rawCategory != "" {

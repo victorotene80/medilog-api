@@ -121,7 +121,7 @@ func (r *EmergencyContactRepository) Update(
 		Model(&models.EmergencyContactModel{}).
 		Where("id = ?", contact.ID).
 		Select("*").
-		Omit("id", "public_id", "created_at").
+		Omit("id", "public_id", "created_at", "deleted_at").
 		Updates(m)
 
 	if result.Error != nil {

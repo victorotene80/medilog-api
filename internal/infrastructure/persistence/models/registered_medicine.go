@@ -4,30 +4,32 @@ import (
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"gorm.io/gorm"
 )
 
 type RegisteredMedicineModel struct {
-	ID                 int64      `gorm:"column:id;primaryKey;autoIncrement"`
-	RegulatoryBodyID   int64      `gorm:"column:regulatory_body_id;not null"`
-	CountryCode        string     `gorm:"column:country_code;not null"`
-	DrugName           string     `gorm:"column:drug_name;not null"`
-	RegistrationNumber string     `gorm:"column:registration_number;not null"`
-	Barcode            *string    `gorm:"column:barcode"`
-	Manufacturer       *string    `gorm:"column:manufacturer"`
-	RegisteredDate     *time.Time `gorm:"column:registered_date"`
-	ExpiryDate         *time.Time `gorm:"column:expiry_date"`
-	Status             bool       `gorm:"column:status;not null"`
-	SourceProductID    *int64     `gorm:"column:source_product_id"`
-	Strength           *string    `gorm:"column:strength"`
-	IngredientName     *string    `gorm:"column:ingredient_name"`
-	Synonym            *string    `gorm:"column:synonym"`
-	CategoryName       *string    `gorm:"column:category_name"`
-	FormName           *string    `gorm:"column:form_name"`
-	RouteName          *string    `gorm:"column:route_name"`
-	ApplicantName      *string    `gorm:"column:applicant_name"`
-	SourcePayload      *string    `gorm:"column:source_payload;type:jsonb"`
-	CreatedAt          time.Time  `gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt          time.Time  `gorm:"column:updated_at;autoUpdateTime"`
+	ID                 int64          `gorm:"column:id;primaryKey;autoIncrement"`
+	RegulatoryBodyID   int64          `gorm:"column:regulatory_body_id;not null"`
+	CountryCode        string         `gorm:"column:country_code;not null"`
+	DrugName           string         `gorm:"column:drug_name;not null"`
+	RegistrationNumber string         `gorm:"column:registration_number;not null"`
+	Barcode            *string        `gorm:"column:barcode"`
+	Manufacturer       *string        `gorm:"column:manufacturer"`
+	RegisteredDate     *time.Time     `gorm:"column:registered_date"`
+	ExpiryDate         *time.Time     `gorm:"column:expiry_date"`
+	Status             bool           `gorm:"column:status;not null"`
+	SourceProductID    *int64         `gorm:"column:source_product_id"`
+	Strength           *string        `gorm:"column:strength"`
+	IngredientName     *string        `gorm:"column:ingredient_name"`
+	Synonym            *string        `gorm:"column:synonym"`
+	CategoryName       *string        `gorm:"column:category_name"`
+	FormName           *string        `gorm:"column:form_name"`
+	RouteName          *string        `gorm:"column:route_name"`
+	ApplicantName      *string        `gorm:"column:applicant_name"`
+	SourcePayload      *string        `gorm:"column:source_payload;type:jsonb"`
+	CreatedAt          time.Time      `gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt          time.Time      `gorm:"column:updated_at;autoUpdateTime"`
+	DeletedAt          gorm.DeletedAt `gorm:"column:deleted_at;index"`
 }
 
 func (RegisteredMedicineModel) TableName() string { return "registered_medicines" }

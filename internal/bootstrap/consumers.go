@@ -1,27 +1,31 @@
 package bootstrap
 
-import (
-	"context"
+// ================================================================================
+// Kafka & RabbitMQ consumers — COMMENTED OUT
+// Uncomment the imports and body below to re-enable.
+// ================================================================================
+//import (
+//	"context"
+//
+//	"github.com/victorotene80/medilog-api/internal/application/messaging"
+//	"go.uber.org/zap"
+//)
+//
+//func registerConsumers(c Consumers, logger *zap.Logger) {
+//	c.EventConsumer.Subscribe("auth.payment.completed.v1", func(ctx context.Context, env messaging.Envelope) error {
+//		return nil
+//	})
+//
+//	c.TaskConsumer.Subscribe("auth.send-welcome-email.v1", func(ctx context.Context, env messaging.Envelope) error {
+//		return nil
+//	})
+//
+//	logger.Info("consumers registered")
+//}
 
-	"github.com/victorotene80/medilog-api/internal/application/messaging"
-	"go.uber.org/zap"
-)
+import "go.uber.org/zap"
 
-func registerConsumers(c Consumers, logger *zap.Logger) {
-	// Kafka integration events
-	c.EventConsumer.Subscribe("auth.payment.completed.v1", func(ctx context.Context, env messaging.Envelope) error {
-		// handle integration event from another service
-		return nil
-	})
-
-	// RabbitMQ internal tasks
-	c.TaskConsumer.Subscribe("auth.send-welcome-email.v1", func(ctx context.Context, env messaging.Envelope) error {
-		// handle background task
-		return nil
-	})
-
-	logger.Info("consumers registered")
-}
+func registerConsumers(_ Consumers, _ *zap.Logger) {}
 
 /*package bootstrap
 

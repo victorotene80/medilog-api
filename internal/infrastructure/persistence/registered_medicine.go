@@ -87,9 +87,40 @@ func (r *RegisteredMedicineRepository) Save(ctx context.Context, e *entities.Reg
 }
 
 func (r *RegisteredMedicineRepository) Update(ctx context.Context, e *entities.RegisteredMedicine) error {
-	return r.db.WithContext(ctx).Save(models.RegisteredMedicineToModel(e)).Error
+	if e == nil {
+		return errors.New("registered medicine is required")
+	}
+	if e.ID <= 0 {
+		return errors.New("registered medicine id is required")
+	}
+
+	model := models.RegisteredMedicineToModel(e)
+	result := r.db.WithContext(ctx).
+		Model(&models.RegisteredMedicineModel{}).
+		Where("id = ?", e.ID).
+		Select("*").
+		Omit("id", "created_at", "deleted_at").
+		Updates(model)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *RegisteredMedicineRepository) Delete(ctx context.Context, id int64) error {
-	return r.db.WithContext(ctx).Delete(&models.RegisteredMedicineModel{}, id).Error
+	if id <= 0 {
+		return errors.New("registered medicine id is required")
+	}
+
+	result := r.db.WithContext(ctx).Delete(&models.RegisteredMedicineModel{}, id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }

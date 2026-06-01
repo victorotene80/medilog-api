@@ -28,6 +28,19 @@ func NewAIHandler(
 	return &AIHandler{commandBus: commandBus, validator: validator}
 }
 
+// CreateConversation godoc
+//
+//	@Summary     Create AI conversation
+//	@Description Creates an AI conversation for the authenticated user.
+//	@Tags        AI Conversations
+//	@Accept      json
+//	@Produce     json
+//	@Security    BearerAuth
+//	@Param       body body request.CreateAIConversationRequest true "AI conversation payload"
+//	@Success     201 {object} response.APIResponse[response.AIConversationResponse]
+//	@Failure     400 {object} response.APIResponse[struct{}]
+//	@Failure     401 {object} response.APIResponse[struct{}]
+//	@Router      /ai/conversations/ [post]
 func (h *AIHandler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 	userID, ok := UserIDFrom(r.Context())
 	if !ok {
@@ -61,6 +74,17 @@ func (h *AIHandler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 	response.Success[response.AIConversationResponse](w, http.StatusCreated, "AI_CONVERSATION_CREATED", "AI conversation created successfully", &resp)
 }
 
+// ListConversations godoc
+//
+//	@Summary     List AI conversations
+//	@Description Lists AI conversations for the authenticated user.
+//	@Tags        AI Conversations
+//	@Produce     json
+//	@Security    BearerAuth
+//	@Param       active_only query bool false "Return only active conversations"
+//	@Success     200 {object} response.APIResponse[[]response.AIConversationResponse]
+//	@Failure     401 {object} response.APIResponse[struct{}]
+//	@Router      /ai/conversations/ [get]
 func (h *AIHandler) ListConversations(w http.ResponseWriter, r *http.Request) {
 	userID, ok := UserIDFrom(r.Context())
 	if !ok {
@@ -87,6 +111,19 @@ func (h *AIHandler) ListConversations(w http.ResponseWriter, r *http.Request) {
 	response.Success[[]response.AIConversationResponse](w, http.StatusOK, "AI_CONVERSATIONS_FETCHED", "AI conversations retrieved successfully", &resp)
 }
 
+// GetConversation godoc
+//
+//	@Summary     Get AI conversation
+//	@Description Gets one AI conversation by public ID.
+//	@Tags        AI Conversations
+//	@Produce     json
+//	@Security    BearerAuth
+//	@Param       publicId path string true "AI conversation public ID"
+//	@Success     200 {object} response.APIResponse[response.AIConversationResponse]
+//	@Failure     400 {object} response.APIResponse[struct{}]
+//	@Failure     401 {object} response.APIResponse[struct{}]
+//	@Failure     404 {object} response.APIResponse[struct{}]
+//	@Router      /ai/conversations/{publicId} [get]
 func (h *AIHandler) GetConversation(w http.ResponseWriter, r *http.Request) {
 	userID, ok := UserIDFrom(r.Context())
 	if !ok {
@@ -120,6 +157,21 @@ func (h *AIHandler) GetConversation(w http.ResponseWriter, r *http.Request) {
 	response.Success[response.AIConversationResponse](w, http.StatusOK, "AI_CONVERSATION_FETCHED", "AI conversation retrieved successfully", &resp)
 }
 
+// SendMessage godoc
+//
+//	@Summary     Send AI message
+//	@Description Sends a user message and returns the saved message plus AI reply.
+//	@Tags        AI Conversations
+//	@Accept      json
+//	@Produce     json
+//	@Security    BearerAuth
+//	@Param       publicId path string                     true "AI conversation public ID"
+//	@Param       body     body request.SendAIMessageRequest true "AI message payload"
+//	@Success     201 {object} response.APIResponse[response.SendAIMessageResponse]
+//	@Failure     400 {object} response.APIResponse[struct{}]
+//	@Failure     401 {object} response.APIResponse[struct{}]
+//	@Failure     404 {object} response.APIResponse[struct{}]
+//	@Router      /ai/conversations/{publicId}/messages [post]
 func (h *AIHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	userID, ok := UserIDFrom(r.Context())
 	if !ok {
@@ -159,6 +211,19 @@ func (h *AIHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	response.Success[response.SendAIMessageResponse](w, http.StatusCreated, "AI_MESSAGE_SENT", "AI message sent successfully", &resp)
 }
 
+// ArchiveConversation godoc
+//
+//	@Summary     Archive AI conversation
+//	@Description Archives one AI conversation by public ID.
+//	@Tags        AI Conversations
+//	@Produce     json
+//	@Security    BearerAuth
+//	@Param       publicId path string true "AI conversation public ID"
+//	@Success     200 {object} response.APIResponse[struct{}]
+//	@Failure     400 {object} response.APIResponse[struct{}]
+//	@Failure     401 {object} response.APIResponse[struct{}]
+//	@Failure     404 {object} response.APIResponse[struct{}]
+//	@Router      /ai/conversations/{publicId}/archive [patch]
 func (h *AIHandler) ArchiveConversation(w http.ResponseWriter, r *http.Request) {
 	userID, ok := UserIDFrom(r.Context())
 	if !ok {

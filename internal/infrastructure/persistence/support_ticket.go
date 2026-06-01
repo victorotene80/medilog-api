@@ -55,6 +55,7 @@ func (r *SupportTicketRepository) Save(ctx context.Context, agg *aggregates.Supp
 			return err
 		}
 		agg.Ticket.ID = ticketModel.ID
+		agg.Ticket.PublicID = ticketModel.PublicID
 
 		for _, msg := range agg.Messages {
 			msg.TicketID = ticketModel.ID

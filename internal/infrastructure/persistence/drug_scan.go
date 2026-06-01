@@ -69,9 +69,40 @@ func (r *DrugScanRepository) Save(ctx context.Context, scan *entities.DrugScan) 
 }
 
 func (r *DrugScanRepository) Update(ctx context.Context, scan *entities.DrugScan) error {
-	return r.db.WithContext(ctx).Save(models.DrugScanToModel(scan)).Error
+	if scan == nil {
+		return errors.New("drug scan is required")
+	}
+	if scan.ID <= 0 {
+		return errors.New("drug scan id is required")
+	}
+
+	model := models.DrugScanToModel(scan)
+	result := r.db.WithContext(ctx).
+		Model(&models.DrugScanModel{}).
+		Where("id = ?", scan.ID).
+		Select("*").
+		Omit("id", "public_id", "created_at", "deleted_at").
+		Updates(model)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *DrugScanRepository) Delete(ctx context.Context, id int64) error {
-	return r.db.WithContext(ctx).Delete(&models.DrugScanModel{}, id).Error
+	if id <= 0 {
+		return errors.New("drug scan id is required")
+	}
+
+	result := r.db.WithContext(ctx).Delete(&models.DrugScanModel{}, id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }

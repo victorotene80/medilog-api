@@ -204,8 +204,8 @@ func envelopeToOutboxEventModel(envelope appmsg.Envelope) (*models.OutboxEventMo
 		OccurredAt:    envelope.OccurredAt,
 		Payload:       datatypes.JSON(envelope.Payload),
 		Metadata:      datatypes.JSON(metadataBytes),
-		CorrelationID: envelope.CorrelationID,
-		CausationID:   envelope.CausationID,
+		CorrelationID: nullableString(envelope.CorrelationID),
+		CausationID:   nullableString(envelope.CausationID),
 		Version:       envelope.Version,
 		Status:        OutboxStatusPending,
 		Attempts:      0,
@@ -234,8 +234,22 @@ func outboxEventModelToEnvelope(model models.OutboxEventModel) (appmsg.Envelope,
 		OccurredAt:    model.OccurredAt,
 		Payload:       []byte(model.Payload),
 		Metadata:      metadata,
-		CorrelationID: model.CorrelationID,
-		CausationID:   model.CausationID,
+		CorrelationID: stringValue(model.CorrelationID),
+		CausationID:   stringValue(model.CausationID),
 		Version:       model.Version,
 	}, nil
+}
+
+func stringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func nullableString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
 }

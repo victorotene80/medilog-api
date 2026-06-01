@@ -4,19 +4,21 @@ import (
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"gorm.io/gorm"
 )
 
 type FunFactModel struct {
-	ID                int64     `gorm:"column:id;primaryKey;autoIncrement"`
-	Title             *string   `gorm:"column:title"`
-	Text              string    `gorm:"column:text;not null"`
-	Category          *string   `gorm:"column:category"`
-	TargetCountryCode *string   `gorm:"column:target_country_code"`
-	TargetAgeMin      *int      `gorm:"column:target_age_min"`
-	TargetAgeMax      *int      `gorm:"column:target_age_max"`
-	AllergyCategory   *int      `gorm:"column:allergy_category"`
-	IsActive          bool      `gorm:"column:is_active;not null;default:true"`
-	CreatedAt         time.Time `gorm:"column:created_at;autoCreateTime"`
+	ID                int64          `gorm:"column:id;primaryKey;autoIncrement"`
+	Title             string         `gorm:"column:title;not null"`
+	Text              string         `gorm:"column:text;not null"`
+	Category          *string        `gorm:"column:category"`
+	TargetCountryCode *string        `gorm:"column:target_country_code"`
+	TargetAgeMin      *int           `gorm:"column:target_age_min"`
+	TargetAgeMax      *int           `gorm:"column:target_age_max"`
+	AllergyCategory   *int           `gorm:"column:allergy_category"`
+	IsActive          bool           `gorm:"column:is_active;not null;default:true"`
+	CreatedAt         time.Time      `gorm:"column:created_at;autoCreateTime"`
+	DeletedAt         gorm.DeletedAt `gorm:"column:deleted_at;index"`
 }
 
 func (FunFactModel) TableName() string { return "fun_facts" }

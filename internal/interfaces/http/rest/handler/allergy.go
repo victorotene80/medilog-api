@@ -40,7 +40,7 @@ func NewAllergyHandler(
 //	@Produce     json
 //	@Param       category query int false "Allergy category (1-5)"
 //	@Success     200 {object} response.APIResponse[[]response.AllergyResponse]
-//	@Router      /reference/allergies [get]
+//	@Router      /reference/allergies/ [get]
 func (h *AllergyHandler) ListAllergies(w http.ResponseWriter, r *http.Request) {
 	q := query.GetAllergiesQuery{}
 
@@ -75,7 +75,7 @@ func (h *AllergyHandler) ListAllergies(w http.ResponseWriter, r *http.Request) {
 //	@Param       body body request.AddAllergyRequest true "Allergy payload"
 //	@Success     201 {object} response.APIResponse[struct{}]
 //	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Router      /reference/allergies [post]
+//	@Router      /reference/allergies/ [post]
 func (h *AllergyHandler) AddAllergy(w http.ResponseWriter, r *http.Request) {
 	req, ok := decodeAndValidate[request.AddAllergyRequest](w, r, h.validator)
 	if !ok {

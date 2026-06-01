@@ -11,7 +11,7 @@ const (
 	UserStatusSuspended           UserStatus = "suspended"
 	UserStatusDeleted             UserStatus = "deleted"
 	UserStatusLocked              UserStatus = "locked"
-	UserStatusPendingVerification UserStatus = "pendingVerification"
+	UserStatusPendingVerification UserStatus = "pending_verification"
 )
 
 func NewUserStatus(raw string) (UserStatus, error) {

@@ -5,17 +5,19 @@ import (
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
 	"github.com/victorotene80/medilog-api/internal/domain/valueobjects"
+	"gorm.io/gorm"
 )
 
 type MedicationAdherenceLogModel struct {
-	ID           int64      `gorm:"column:id;primaryKey;autoIncrement"`
-	MedicationID int64      `gorm:"column:medication_id;not null"`
-	UserID       int64      `gorm:"column:user_id;not null"`
-	ScheduledAt  time.Time  `gorm:"column:scheduled_at;not null;index:idx_adherence_user_scheduled,priority:2"`
-	TakenAt      *time.Time `gorm:"column:taken_at"`
-	Status       int        `gorm:"column:status;not null"`
-	Note         *string    `gorm:"column:note"`
-	CreatedAt    time.Time  `gorm:"column:created_at;autoCreateTime"`
+	ID           int64          `gorm:"column:id;primaryKey;autoIncrement"`
+	MedicationID int64          `gorm:"column:medication_id;not null"`
+	UserID       int64          `gorm:"column:user_id;not null"`
+	ScheduledAt  time.Time      `gorm:"column:scheduled_at;not null;index:idx_adherence_user_scheduled,priority:2"`
+	TakenAt      *time.Time     `gorm:"column:taken_at"`
+	Status       int            `gorm:"column:status;not null"`
+	Note         *string        `gorm:"column:note"`
+	CreatedAt    time.Time      `gorm:"column:created_at;autoCreateTime"`
+	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at;index"`
 }
 
 func (MedicationAdherenceLogModel) TableName() string { return "medication_adherence_logs" }

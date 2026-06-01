@@ -5,14 +5,16 @@ import (
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
 	"github.com/victorotene80/medilog-api/internal/domain/valueobjects"
+	"gorm.io/gorm"
 )
 
 type AllergyModel struct {
-	ID          int64     `gorm:"column:id;primaryKey;autoIncrement"`
-	Name        string    `gorm:"column:name;not null"`
-	Category    int       `gorm:"column:category;not null"`
-	Description *string   `gorm:"column:description"`
-	CreatedAt   time.Time `gorm:"column:created_at;autoCreateTime"`
+	ID          int64          `gorm:"column:id;primaryKey;autoIncrement"`
+	Name        string         `gorm:"column:name;not null"`
+	Category    int            `gorm:"column:category;not null"`
+	Description *string        `gorm:"column:description"`
+	CreatedAt   time.Time      `gorm:"column:created_at;autoCreateTime"`
+	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;index"`
 }
 
 func (AllergyModel) TableName() string { return "allergies" }

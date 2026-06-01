@@ -4,7 +4,7 @@ import "time"
 
 type FunFactResponse struct {
 	ID                string     `json:"id"`
-	Title             *string    `json:"title,omitempty"`
+	Title             string     `json:"title"`
 	Text              string     `json:"text"`
 	Category          *string    `json:"category,omitempty"`
 	TargetCountryCode *string    `json:"target_country_code,omitempty"`

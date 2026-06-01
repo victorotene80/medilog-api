@@ -10,6 +10,13 @@ import (
 	"github.com/victorotene80/medilog-api/internal/bootstrap"
 )
 
+// @title			MediLog API
+// @version		1.0
+// @description	HTTP API for MediLog authentication, health records, medication tracking, AI conversations, drug verification, and reference data.
+// @BasePath		/api/v1
+// @securityDefinitions.apikey	BearerAuth
+// @in							header
+// @name						Authorization
 func main() {
 
 	if err := godotenv.Load(".env"); err != nil {

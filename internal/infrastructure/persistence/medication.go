@@ -69,10 +69,34 @@ func (r *MedicationRepository) Save(ctx context.Context, agg *aggregates.Medicat
 }
 
 func (r *MedicationRepository) Update(ctx context.Context, agg *aggregates.MedicationAggregate) error {
-	return r.db.WithContext(ctx).Save(models.MedicationToModel(agg.Medication)).Error
+	if agg == nil || agg.Medication == nil {
+		return errors.New("medication is required")
+	}
+	if agg.Medication.ID <= 0 {
+		return errors.New("medication id is required")
+	}
+
+	model := models.MedicationToModel(agg.Medication)
+	result := r.db.WithContext(ctx).
+		Model(&models.MedicationModel{}).
+		Where("id = ?", agg.Medication.ID).
+		Select("*").
+		Omit("id", "public_id", "created_at", "deleted_at").
+		Updates(model)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *MedicationRepository) Delete(ctx context.Context, id int64) error {
+	if id <= 0 {
+		return errors.New("medication id is required")
+	}
+
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("medication_id = ?", id).
 			Delete(&models.MedicationAdherenceLogModel{}).Error; err != nil {
@@ -84,7 +108,14 @@ func (r *MedicationRepository) Delete(ctx context.Context, id int64) error {
 			return err
 		}
 
-		return tx.Delete(&models.MedicationModel{}, id).Error
+		result := tx.Delete(&models.MedicationModel{}, id)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
 	})
 }
 

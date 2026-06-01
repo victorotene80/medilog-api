@@ -81,7 +81,7 @@ func (r *FunFactRepository) Update(ctx context.Context, fact *entities.FunFact) 
 		Model(&models.FunFactModel{}).
 		Where("id = ?", fact.ID).
 		Select("*").
-		Omit("id", "created_at").
+		Omit("id", "created_at", "deleted_at").
 		Updates(m)
 
 	if result.Error != nil {

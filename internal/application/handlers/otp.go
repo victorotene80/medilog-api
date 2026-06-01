@@ -206,13 +206,8 @@ func (h *VerifyOTPHandler) Handle(
 		return nil, fmt.Errorf("mark OTP used: %w", err)
 	}
 
-	var userID string
-	if otp.UserID != nil {
-		userID = strconv.FormatInt(*otp.UserID, 10)
-	}
-
 	return &dto.VerifyOTPResultDTO{
-		UserID:    userID,
+		UserID:    strconv.FormatInt(otp.UserID, 10),
 		Recipient: recipient,
 		Channel:   channel.String(),
 		Purpose:   purpose.String(),
@@ -271,35 +266,33 @@ func buildOTPMessage(
 func (h *RequestOTPHandler) resolveOTPUserID(
 	ctx context.Context,
 	recipient string,
-) (*int64, error) {
+) (int64, error) {
 	recipient = strings.TrimSpace(recipient)
 	if recipient == "" {
-		return nil, errors.New("recipient is required")
+		return 0, errors.New("recipient is required")
 	}
 
 	if strings.Contains(recipient, "@") {
 		user, err := h.userRepo.FindByEmail(ctx, recipient)
 		if err != nil {
-			return nil, fmt.Errorf("find user by email: %w", err)
+			return 0, fmt.Errorf("find user by email: %w", err)
 		}
 
 		if user == nil {
-			return nil, errors.New("user not found")
+			return 0, errors.New("user not found")
 		}
 
-		id := user.ID
-		return &id, nil
+		return user.ID, nil
 	}
 
 	user, err := h.userRepo.FindByPhone(ctx, recipient)
 	if err != nil {
-		return nil, fmt.Errorf("find user by phone: %w", err)
+		return 0, fmt.Errorf("find user by phone: %w", err)
 	}
 
 	if user == nil {
-		return nil, errors.New("user not found")
+		return 0, errors.New("user not found")
 	}
 
-	id := user.ID
-	return &id, nil
+	return user.ID, nil
 }

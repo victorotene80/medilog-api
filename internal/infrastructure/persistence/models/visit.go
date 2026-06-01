@@ -4,26 +4,28 @@ import (
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"gorm.io/gorm"
 )
 
 type VisitModel struct {
-	ID             int64     `gorm:"column:id;primaryKey;autoIncrement"`
-	PublicID       string    `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
-	UserID         int64     `gorm:"column:user_id;not null;index"`
-	HospitalName   *string   `gorm:"column:hospital_name"`
-	Diagnosis      *string   `gorm:"column:diagnosis"`
-	VisitDate      time.Time `gorm:"column:visit_date;not null;index"`
-	Outcome        *string   `gorm:"column:outcome"`
-	MedsCount      int       `gorm:"column:meds_count;not null;default:0"`
-	Doctor         *string   `gorm:"column:doctor"`
-	ChiefComplaint *string   `gorm:"column:chief_complaint"`
-	Notes          *string   `gorm:"column:notes"`
-	BloodPressure  *string   `gorm:"column:blood_pressure"`
-	Temperature    *float64  `gorm:"column:temperature"`
-	Weight         *float64  `gorm:"column:weight"`
-	Pulse          *int      `gorm:"column:pulse"`
-	CreatedAt      time.Time `gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt      time.Time `gorm:"column:updated_at;autoUpdateTime"`
+	ID             int64          `gorm:"column:id;primaryKey;autoIncrement"`
+	PublicID       string         `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
+	UserID         int64          `gorm:"column:user_id;not null;index"`
+	HospitalName   *string        `gorm:"column:hospital_name"`
+	Diagnosis      *string        `gorm:"column:diagnosis"`
+	VisitDate      time.Time      `gorm:"column:visit_date;not null;index"`
+	Outcome        *string        `gorm:"column:outcome"`
+	MedsCount      int            `gorm:"column:meds_count;not null;default:0"`
+	Doctor         *string        `gorm:"column:doctor"`
+	ChiefComplaint *string        `gorm:"column:chief_complaint"`
+	Notes          *string        `gorm:"column:notes"`
+	BloodPressure  *string        `gorm:"column:blood_pressure"`
+	Temperature    *float64       `gorm:"column:temperature"`
+	Weight         *float64       `gorm:"column:weight"`
+	Pulse          *int           `gorm:"column:pulse"`
+	CreatedAt      time.Time      `gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt      time.Time      `gorm:"column:updated_at;autoUpdateTime"`
+	DeletedAt      gorm.DeletedAt `gorm:"column:deleted_at;index"`
 }
 
 func (VisitModel) TableName() string { return "visits" }

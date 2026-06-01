@@ -38,7 +38,7 @@ func NewVisitHandler(
 //	@Security    BearerAuth
 //	@Param       body body request.CreateVisitRequest true "Visit payload"
 //	@Success     201 {object} response.APIResponse[struct{}]
-//	@Router      /visits [post]
+//	@Router      /visits/ [post]
 func (h *VisitHandler) CreateVisit(w http.ResponseWriter, r *http.Request) {
 	userID, ok := UserIDFrom(r.Context())
 	if !ok {
@@ -85,7 +85,7 @@ func (h *VisitHandler) CreateVisit(w http.ResponseWriter, r *http.Request) {
 //	@Param       from query string false "Start datetime or date"
 //	@Param       to   query string false "End datetime or date"
 //	@Success     200 {object} response.APIResponse[[]response.VisitResponse]
-//	@Router      /visits [get]
+//	@Router      /visits/ [get]
 func (h *VisitHandler) ListVisits(w http.ResponseWriter, r *http.Request) {
 	userID, ok := UserIDFrom(r.Context())
 	if !ok {

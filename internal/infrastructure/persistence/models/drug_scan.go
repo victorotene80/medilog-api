@@ -4,23 +4,25 @@ import (
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"gorm.io/gorm"
 )
 
 type DrugScanModel struct {
-	ID                   int64      `gorm:"column:id;primaryKey;autoIncrement"`
-	PublicID             string     `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
-	UserID               int64      `gorm:"column:user_id;not null;index"`
-	DrugName             *string    `gorm:"column:drug_name"`
-	RegistrationNumber   *string    `gorm:"column:registration_number"`
-	ExpiryDate           *time.Time `gorm:"column:expiry_date"`
-	RegulatoryBodyID     *int64     `gorm:"column:regulatory_body_id"`
-	RegisteredMedicineID *int64     `gorm:"column:registered_medicine_id"`
-	IsVerified           bool       `gorm:"column:is_verified;not null;default:false"`
-	ConfidenceScore      *float64   `gorm:"column:confidence_score"`
-	LotNumberValid       *bool      `gorm:"column:lot_number_valid"`
-	VerificationStatus   *string    `gorm:"column:verification_status"`
-	Explanation          *string    `gorm:"column:explanation"`
-	CreatedAt            time.Time  `gorm:"column:created_at;autoCreateTime"`
+	ID                   int64          `gorm:"column:id;primaryKey;autoIncrement"`
+	PublicID             string         `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
+	UserID               int64          `gorm:"column:user_id;not null;index"`
+	DrugName             *string        `gorm:"column:drug_name"`
+	RegistrationNumber   *string        `gorm:"column:registration_number"`
+	ExpiryDate           *time.Time     `gorm:"column:expiry_date"`
+	RegulatoryBodyID     *int64         `gorm:"column:regulatory_body_id"`
+	RegisteredMedicineID *int64         `gorm:"column:registered_medicine_id"`
+	IsVerified           bool           `gorm:"column:is_verified;not null;default:false"`
+	ConfidenceScore      *float64       `gorm:"column:confidence_score"`
+	LotNumberValid       *bool          `gorm:"column:lot_number_valid"`
+	VerificationStatus   *string        `gorm:"column:verification_status"`
+	Explanation          *string        `gorm:"column:explanation"`
+	CreatedAt            time.Time      `gorm:"column:created_at;autoCreateTime"`
+	DeletedAt            gorm.DeletedAt `gorm:"column:deleted_at;index"`
 }
 
 func (DrugScanModel) TableName() string { return "drug_scans" }

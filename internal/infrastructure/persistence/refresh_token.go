@@ -65,7 +65,27 @@ func (r *RefreshTokenRepository) Save(ctx context.Context, token *entities.Refre
 }
 
 func (r *RefreshTokenRepository) Update(ctx context.Context, token *entities.RefreshToken) error {
-	return r.db.WithContext(ctx).Save(models.RefreshTokenToModel(token)).Error
+	if token == nil {
+		return errors.New("refresh token is required")
+	}
+	if token.ID <= 0 {
+		return errors.New("refresh token id is required")
+	}
+
+	model := models.RefreshTokenToModel(token)
+	result := r.db.WithContext(ctx).
+		Model(&models.RefreshTokenModel{}).
+		Where("id = ?", token.ID).
+		Select("*").
+		Omit("id", "date_created", "deleted_at").
+		Updates(model)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *RefreshTokenRepository) RevokeAllForUser(ctx context.Context, userID int64, now time.Time) error {

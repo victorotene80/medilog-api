@@ -171,7 +171,7 @@ func (r *DashboardRepository) getMedicationTimes(
 	err := r.db.WithContext(ctx).
 		Table("medication_times").
 		Select("medication_id, to_char(time_value, 'HH24:MI') AS time_value").
-		Where("medication_id IN ?", medicationIDs).
+		Where("medication_id IN ? AND deleted_at IS NULL", medicationIDs).
 		Order("time_value ASC").
 		Scan(&rows).Error
 	if err != nil {
@@ -232,7 +232,7 @@ func (r *DashboardRepository) getMonthlyVisitCounts(
 	err := r.db.WithContext(ctx).
 		Table("visits").
 		Select("EXTRACT(MONTH FROM visit_date)::int AS month, COUNT(*)::int AS total").
-		Where("user_id = ? AND visit_date >= ? AND visit_date < ?", userID, yearStart, yearEnd).
+		Where("user_id = ? AND visit_date >= ? AND visit_date < ? AND deleted_at IS NULL", userID, yearStart, yearEnd).
 		Group("month").
 		Scan(&rows).Error
 	if err != nil {

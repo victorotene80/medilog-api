@@ -4,13 +4,15 @@ import (
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"gorm.io/gorm"
 )
 
 type MedicationTimeModel struct {
-	ID           int64     `gorm:"column:id;primaryKey;autoIncrement"`
-	MedicationID int64     `gorm:"column:medication_id;not null;index"`
-	TimeValue    time.Time `gorm:"column:time_value;not null"`
-	CreatedAt    time.Time `gorm:"column:created_at;autoCreateTime"`
+	ID           int64          `gorm:"column:id;primaryKey;autoIncrement"`
+	MedicationID int64          `gorm:"column:medication_id;not null;index"`
+	TimeValue    time.Time      `gorm:"column:time_value;not null"`
+	CreatedAt    time.Time      `gorm:"column:created_at;autoCreateTime"`
+	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at;index"`
 }
 
 func (MedicationTimeModel) TableName() string { return "medication_times" }

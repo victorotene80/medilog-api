@@ -46,7 +46,7 @@ func NewUserAllergyHandler(
 //	@Success     201 {object} response.APIResponse[struct{}]
 //	@Failure     400 {object} response.APIResponse[struct{}]
 //	@Failure     401 {object} response.APIResponse[struct{}]
-//	@Router      /health/allergies [post]
+//	@Router      /health/allergies/ [post]
 func (h *UserAllergyHandler) AddUserAllergies(w http.ResponseWriter, r *http.Request) {
 	userID, ok := UserIDFrom(r.Context())
 	if !ok {
@@ -97,7 +97,7 @@ func (h *UserAllergyHandler) AddUserAllergies(w http.ResponseWriter, r *http.Req
 //	@Param       category query int false "Allergy category (1-5)"
 //	@Success     200 {object} response.APIResponse[[]response.UserAllergyResponse]
 //	@Failure     401 {object} response.APIResponse[struct{}]
-//	@Router      /health/allergies [get]
+//	@Router      /health/allergies/ [get]
 func (h *UserAllergyHandler) ListUserAllergies(w http.ResponseWriter, r *http.Request) {
 	userID, ok := UserIDFrom(r.Context())
 	if !ok {

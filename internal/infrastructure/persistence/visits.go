@@ -118,5 +118,16 @@ func (r *GormVisitRepository) Update(ctx context.Context, visit *entities.Visit)
 }
 
 func (r *GormVisitRepository) Delete(ctx context.Context, id int64) error {
-	return r.db.WithContext(ctx).Delete(&models.VisitModel{}, id).Error
+	if id <= 0 {
+		return errors.New("visit id is required")
+	}
+
+	result := r.db.WithContext(ctx).Delete(&models.VisitModel{}, id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }

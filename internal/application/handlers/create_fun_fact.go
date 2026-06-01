@@ -28,6 +28,10 @@ func (h *CreateFunFactHandler) Handle(
 	if strings.TrimSpace(cmd.Text) == "" {
 		return struct{}{}, errors.New("fun fact text is required")
 	}
+	title := strings.TrimSpace(cmd.Title)
+	if title == "" {
+		return struct{}{}, errors.New("fun fact title is required")
+	}
 
 	if err := validateFunFactRanges(cmd.TargetAgeMin, cmd.TargetAgeMax, cmd.AllergyCategory); err != nil {
 		return struct{}{}, err
@@ -35,7 +39,7 @@ func (h *CreateFunFactHandler) Handle(
 
 	now := time.Now().UTC()
 	fact := &entities.FunFact{
-		Title:             sanitizeOptionalString(cmd.Title),
+		Title:             title,
 		Text:              strings.TrimSpace(cmd.Text),
 		Category:          sanitizeOptionalString(cmd.Category),
 		TargetCountryCode: sanitizeOptionalString(cmd.TargetCountryCode),

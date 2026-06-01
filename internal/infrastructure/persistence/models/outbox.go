@@ -18,8 +18,8 @@ type OutboxEventModel struct {
 	OccurredAt    time.Time      `gorm:"column:occurred_at;not null;index"`
 	Payload       datatypes.JSON `gorm:"column:payload;type:jsonb;not null"`
 	Metadata      datatypes.JSON `gorm:"column:metadata;type:jsonb;not null"`
-	CorrelationID string         `gorm:"column:correlation_id;size:100"`
-	CausationID   string         `gorm:"column:causation_id;size:100"`
+	CorrelationID *string        `gorm:"column:correlation_id;size:100"`
+	CausationID   *string        `gorm:"column:causation_id;size:100"`
 	Version       int            `gorm:"column:version;not null"`
 
 	Status       int        `gorm:"column:status;not null;index"`
@@ -55,10 +55,17 @@ func envelopeToOutboxEventModel(envelope appmsg.Envelope) (*OutboxEventModel, er
 		OccurredAt:    envelope.OccurredAt,
 		Payload:       datatypes.JSON(envelope.Payload),
 		Metadata:      datatypes.JSON(metadataBytes),
-		CorrelationID: envelope.CorrelationID,
-		CausationID:   envelope.CausationID,
+		CorrelationID: nullableString(envelope.CorrelationID),
+		CausationID:   nullableString(envelope.CausationID),
 		Version:       envelope.Version,
 		Status:        1,
 		Attempts:      0,
 	}, nil
+}
+
+func nullableString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
 }

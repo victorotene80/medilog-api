@@ -1,7 +1,7 @@
 package request
 
 type CreateFunFactRequest struct {
-	Title             *string `json:"title"                validate:"omitempty,max=200"`
+	Title             string  `json:"title"                validate:"required,min=1,max=200"`
 	Text              string  `json:"text"                 validate:"required,min=1"`
 	Category          *string `json:"category"             validate:"omitempty,max=100"`
 	TargetCountryCode *string `json:"target_country_code"  validate:"omitempty,max=10"`
@@ -12,7 +12,7 @@ type CreateFunFactRequest struct {
 }
 
 type UpdateFunFactRequest struct {
-	Title             *string `json:"title"                validate:"omitempty,max=200"`
+	Title             string  `json:"title"                validate:"required,min=1,max=200"`
 	Text              string  `json:"text"                 validate:"required,min=1"`
 	Category          *string `json:"category"             validate:"omitempty,max=100"`
 	TargetCountryCode *string `json:"target_country_code"  validate:"omitempty,max=10"`

@@ -3,8 +3,6 @@ package logging
 import (
 	"context"
 
-	"go.opentelemetry.io/contrib/bridges/otelzap"
-	otellog "go.opentelemetry.io/otel/log"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -16,25 +14,31 @@ type LoggerProvider struct {
 }
 
 // NewLoggerProvider builds a zap logger.
-// If an OTEL LoggerProvider is supplied, log records are also forwarded to it
-// (and on to Loki via the collector) in addition to stdout.
-func NewLoggerProvider(otelLP otellog.LoggerProvider) (*LoggerProvider, error) {
-	// Base production encoder — writes to stdout as before.
+// OTel log bridge is COMMENTED OUT — the otelLP parameter is accepted for
+// signature compatibility but the dual-write to the OTel pipeline is disabled.
+// ================================================================================
+// Original OTel bridge:
+// import (
+// 	"go.opentelemetry.io/contrib/bridges/otelzap"
+// 	otellog "go.opentelemetry.io/otel/log"
+// )
+// func NewLoggerProvider(otelLP otellog.LoggerProvider) (*LoggerProvider, error) {
+// 	...
+// 	if otelLP != nil {
+// 		otelCore := otelzap.NewCore("medilog-api", otelzap.WithLoggerProvider(otelLP))
+// 		core = zapcore.NewTee(core, otelCore)
+// 	}
+// 	...
+// }
+// ================================================================================
+func NewLoggerProvider(_ any) (*LoggerProvider, error) {
 	prodCfg := zap.NewProductionConfig()
 	baseCore, err := prodCfg.Build()
 	if err != nil {
 		return nil, err
 	}
 
-	core := baseCore.Core()
-
-	if otelLP != nil {
-		// otelzap.NewCore sends every zap record to the OTEL log pipeline.
-		otelCore := otelzap.NewCore("medilog-api", otelzap.WithLoggerProvider(otelLP))
-		core = zapcore.NewTee(core, otelCore)
-	}
-
-	logger := zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
+	logger := zap.New(baseCore.Core(), zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
 	return &LoggerProvider{logger: logger}, nil
 }
 

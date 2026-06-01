@@ -4,18 +4,20 @@ import (
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"gorm.io/gorm"
 )
 
 type EmergencyContactModel struct {
-	ID           int64     `gorm:"column:id;primaryKey;autoIncrement"`
-	PublicID     string    `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
-	UserID       int64     `gorm:"column:user_id;not null"`
-	Name         string    `gorm:"column:name;not null"`
-	Relationship string    `gorm:"column:relationship;not null"`
-	Phone        string    `gorm:"column:phone;not null"`
-	IsPrimary    bool      `gorm:"column:is_primary;not null;default:false"`
-	CreatedAt    time.Time `gorm:"column:created_at"`
-	UpdatedAt    time.Time `gorm:"column:updated_at"`
+	ID           int64          `gorm:"column:id;primaryKey;autoIncrement"`
+	PublicID     string         `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
+	UserID       int64          `gorm:"column:user_id;not null"`
+	Name         string         `gorm:"column:name;not null"`
+	Relationship string         `gorm:"column:relationship;not null"`
+	Phone        string         `gorm:"column:phone;not null"`
+	IsPrimary    bool           `gorm:"column:is_primary;not null;default:false"`
+	CreatedAt    time.Time      `gorm:"column:created_at"`
+	UpdatedAt    time.Time      `gorm:"column:updated_at"`
+	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at;index"`
 }
 
 func (EmergencyContactModel) TableName() string {

@@ -1,3 +1,9 @@
+//go:build ignore
+
+// COMMENTED OUT — OTel telemetry middleware (traces + metrics).
+// Remove the //go:build ignore line above to re-enable.
+// ================================================================================
+
 package middleware
 
 import (
@@ -15,13 +21,6 @@ import (
 
 const instrumentationName = "github.com/victorotene80/medilog-api"
 
-// TelemetryMiddleware instruments every HTTP request with:
-//   - A server-side span (trace)
-//   - http.server.request.duration histogram (metric)
-//   - http.server.active_requests updown-counter (metric)
-//
-// It also extracts W3C TraceContext headers so distributed traces propagate
-// correctly from upstream callers (mobile app, API gateway, etc.).
 type TelemetryMiddleware struct {
 	tracer         trace.Tracer
 	duration       metric.Float64Histogram
@@ -56,12 +55,10 @@ func NewTelemetryMiddleware() (*TelemetryMiddleware, error) {
 	}, nil
 }
 
-// Handle wraps next with tracing and metrics instrumentation.
 func (m *TelemetryMiddleware) Handle(next http.Handler) http.Handler {
 	propagator := otel.GetTextMapPropagator()
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Extract any incoming trace context (W3C TraceContext / Baggage).
 		ctx := propagator.Extract(r.Context(), propagation.HeaderCarrier(r.Header))
 
 		route := r.URL.Path
@@ -72,7 +69,6 @@ func (m *TelemetryMiddleware) Handle(next http.Handler) http.Handler {
 			semconv.URLPath(route),
 		}
 
-		// Start span.
 		spanName := fmt.Sprintf("%s %s", method, route)
 		ctx, span := m.tracer.Start(ctx, spanName,
 			trace.WithSpanKind(trace.SpanKindServer),
@@ -83,11 +79,9 @@ func (m *TelemetryMiddleware) Handle(next http.Handler) http.Handler {
 		)
 		defer span.End()
 
-		// Track active requests.
 		m.activeRequests.Add(ctx, 1, metric.WithAttributes(commonAttrs...))
 		defer m.activeRequests.Add(ctx, -1, metric.WithAttributes(commonAttrs...))
 
-		// Wrap ResponseWriter so we can capture the status code.
 		rw := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 
 		start := time.Now()
@@ -104,8 +98,6 @@ func (m *TelemetryMiddleware) Handle(next http.Handler) http.Handler {
 	})
 }
 
-// statusRecorder is a minimal ResponseWriter wrapper that captures the HTTP
-// status code written by the handler so we can attach it to spans/metrics.
 type statusRecorder struct {
 	http.ResponseWriter
 	status int

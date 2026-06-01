@@ -26,6 +26,7 @@ Notes:
 - Error responses omit data.
 - Timestamps are RFC3339 strings.
 - /health is plain text and returns "ok".
+- /metrics returns Prometheus text exposition, not the JSON envelope.
 
 Common errors:
 - 400 INVALID_REQUEST_BODY
@@ -50,6 +51,7 @@ Success codes by endpoint:
 
 Health
 - GET /health: plain text "ok"
+- GET /metrics: Prometheus metrics text
 
 Auth
 - POST /api/v1/auth/register: USER_CREATED

@@ -24,7 +24,7 @@ func initializeExternalServices(
 	httpService httpclient.HTTPService,
 ) ExternalServices {
 	return ExternalServices{
-		GoogleAuth: googleauth.NewAuthService(httpService, cfg.Google),
+		GoogleAuth: googleauth.NewAuthService(cfg.Google),
 		SMSSender:  buildSMSSender(cfg, httpService),
 		AIModel:    buildAIModelService(cfg, httpService),
 	}

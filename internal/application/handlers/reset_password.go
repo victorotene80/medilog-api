@@ -75,11 +75,11 @@ func (h *ResetPasswordHandler) Handle(
 		return struct{}{}, errors.New("invalid or expired reset code")
 	}
 
-	if otp.UserID == nil {
+	if otp.UserID <= 0 {
 		return struct{}{}, errors.New("invalid reset code")
 	}
 
-	agg, err := h.userRepo.FindByID(ctx, *otp.UserID)
+	agg, err := h.userRepo.FindByID(ctx, otp.UserID)
 	if err != nil || agg == nil {
 		return struct{}{}, errors.New("user not found")
 	}
@@ -104,12 +104,12 @@ func (h *ResetPasswordHandler) Handle(
 		return struct{}{}, fmt.Errorf("mark OTP used: %w", err)
 	}
 
-	if err := h.refreshRepo.RevokeAllForUser(ctx, *otp.UserID, now); err != nil {
+	if err := h.refreshRepo.RevokeAllForUser(ctx, otp.UserID, now); err != nil {
 		return struct{}{}, fmt.Errorf("revoke sessions: %w", err)
 	}
 
 	if h.auditLogger != nil {
-		userID := strconv.FormatInt(*otp.UserID, 10)
+		userID := strconv.FormatInt(otp.UserID, 10)
 		_ = h.auditLogger.Log(ctx, dto.AuditRecord{
 			Action:     dto.AuditActionPasswordReset,
 			UserID:     &userID,

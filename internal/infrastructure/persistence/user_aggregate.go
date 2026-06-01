@@ -135,7 +135,7 @@ func (r *UserAggregateRepository) Save(ctx context.Context, agg *aggregates.User
 		}
 
 		agg.User.ID = userModel.ID
-		agg.User.PublicID = *userModel.PublicID
+		agg.User.PublicID = userModel.PublicID
 		agg.User.CreatedAt = userModel.CreatedAt
 		agg.User.UpdatedAt = userModel.UpdatedAt
 

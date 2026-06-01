@@ -2,17 +2,19 @@ package config
 
 import "time"
 
+// Messaging MessagingConfig // COMMENTED OUT — Kafka + RabbitMQ
+
 type Config struct {
 	Security  SecurityConfig
 	Database  DatabaseConfig
 	Redis     RedisConfig
-	Messaging MessagingConfig
+	//Messaging MessagingConfig
 	HTTP      HTTPConfig
 	Google    GoogleConfig
 	AI        AIConfig
 	Claude    ClaudeConfig
 	OTP       OTPConfig
-	Telemetry TelemetryConfig
+	//Telemetry TelemetryConfig // COMMENTED OUT — OTel observability
 	Twilio    TwilioConfig
 	BulkSms   BulkSmsConfig
 	SMS       SMSConfig
@@ -70,11 +72,11 @@ type TwilioConfig struct {
 	BaseURL             string
 }
 
-type MessagingConfig struct {
-	Kafka    KafkaConfig
-	RabbitMQ RabbitMQConfig
-	Relay    RelayConfig
-}
+//type MessagingConfig struct {
+//	Kafka    KafkaConfig
+//	RabbitMQ RabbitMQConfig
+//	Relay    RelayConfig
+//}
 
 type GoogleConfig struct {
 	ClientID     string
@@ -82,36 +84,36 @@ type GoogleConfig struct {
 	UserInfoURL  string
 	OAuthBaseURL string
 }
-type KafkaConfig struct {
-	Brokers         []string
-	TopicPrefix     string
-	ConsumerGroupID string
-	WriteTimeout    time.Duration
-}
+//type KafkaConfig struct {
+//	Brokers         []string
+//	TopicPrefix     string
+//	ConsumerGroupID string
+//	WriteTimeout    time.Duration
+//}
 
 type HTTPConfig struct {
 	Timeout time.Duration
 }
 
-type RabbitMQConfig struct {
-	DSN            string
-	Exchange       string
-	RetryExchange  string
-	DLExchange     string
-	MaxRetries     int
-	RetryDelay     time.Duration
-	PublishTimeout time.Duration
-}
-
-type RelayConfig struct {
-	PollInterval       time.Duration
-	BatchSize          int
-	ReclaimAfter       time.Duration
-	DefaultEventBroker string
-	DefaultTaskBroker  string
-	EventRoutes        map[string]string
-	TaskRoutes         map[string]string
-}
+//type RabbitMQConfig struct {
+//	DSN            string
+//	Exchange       string
+//	RetryExchange  string
+//	DLExchange     string
+//	MaxRetries     int
+//	RetryDelay     time.Duration
+//	PublishTimeout time.Duration
+//}
+//
+//type RelayConfig struct {
+//	PollInterval       time.Duration
+//	BatchSize          int
+//	ReclaimAfter       time.Duration
+//	DefaultEventBroker string
+//	DefaultTaskBroker  string
+//	EventRoutes        map[string]string
+//	TaskRoutes         map[string]string
+//}
 
 type SecurityConfig struct {
 	SessionPepper   string
@@ -146,10 +148,10 @@ type OTPConfig struct {
 	BcryptCost int
 }
 
-type TelemetryConfig struct {
-	Enabled          bool
-	ServiceName      string
-	ServiceVersion   string
-	ExporterEndpoint string // e.g. "otel-collector:4317"
-	ExporterInsecure bool
-}
+//type TelemetryConfig struct {
+//	Enabled          bool
+//	ServiceName      string
+//	ServiceVersion   string
+//	ExporterEndpoint string
+//	ExporterInsecure bool
+//}

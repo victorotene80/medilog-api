@@ -19,6 +19,7 @@ type SupportAttachment struct {
 
 type SupportTicket struct {
 	ID            int64
+	PublicID      string
 	UserID        int64
 	CategoryID    int
 	Status        valueobjects.TicketStatus

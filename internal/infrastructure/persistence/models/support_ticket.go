@@ -9,6 +9,7 @@ import (
 
 type SupportTicketModel struct {
 	ID            int64      `gorm:"column:id;primaryKey;autoIncrement"`
+	PublicID      string     `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
 	UserID        int64      `gorm:"column:user_id;not null;index"`
 	CategoryID    int        `gorm:"column:category_id;not null"`
 	Status        string     `gorm:"column:status;not null;default:open;index"`
@@ -34,6 +35,7 @@ func SupportTicketToEntity(m *SupportTicketModel) (*entities.SupportTicket, erro
 	}
 	return &entities.SupportTicket{
 		ID:            m.ID,
+		PublicID:      m.PublicID,
 		UserID:        m.UserID,
 		CategoryID:    m.CategoryID,
 		Status:        status,
@@ -50,6 +52,7 @@ func SupportTicketToEntity(m *SupportTicketModel) (*entities.SupportTicket, erro
 func SupportTicketToModel(e *entities.SupportTicket) *SupportTicketModel {
 	return &SupportTicketModel{
 		ID:            e.ID,
+		PublicID:      e.PublicID,
 		UserID:        e.UserID,
 		CategoryID:    e.CategoryID,
 		Status:        e.Status.String(),

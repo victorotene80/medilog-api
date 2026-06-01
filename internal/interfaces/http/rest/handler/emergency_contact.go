@@ -30,10 +30,10 @@ func NewEmergencyContactHandler(commandBus *messaging.CommandBus, validator appC
 //	@Produce     json
 //	@Security    BearerAuth
 //	@Param       body body request.CreateEmergencyContactRequest true "Contact payload"
-//	@Success     201 {object} response.APIResponse[response.EmergencyContactResponse]
+//	@Success     201 {object} response.APIResponse[struct{}]
 //	@Failure     400 {object} response.APIResponse[struct{}]
 //	@Failure     401 {object} response.APIResponse[struct{}]
-//	@Router      /health/emergency-contacts [post]
+//	@Router      /emergency-contacts/ [post]
 func (h *EmergencyContactHandler) CreateEmergencyContact(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 

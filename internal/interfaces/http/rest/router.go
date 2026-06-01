@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chiMw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 
 	"github.com/victorotene80/medilog-api/internal/interfaces/http/rest/handler"
@@ -79,6 +80,7 @@ func (rt *Router) Setup() http.Handler {
 	rt.mux.Use(chiMw.RealIP)
 	rt.mux.Use(appmw.PanicRecovery(rt.Logger))
 	rt.mux.Use(appmw.RequestMetadata)
+	rt.mux.Use(appmw.NewPrometheusMetrics().Handle)
 	rt.mux.Use(chiMw.Logger)
 
 	rt.mux.Use(cors.Handler(cors.Options{
@@ -117,6 +119,9 @@ func (rt *Router) Setup() http.Handler {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+
+	// Lightweight Prometheus metrics endpoint (replaces the full OTel stack).
+	rt.mux.Get("/metrics", promhttp.Handler().ServeHTTP)
 
 	rt.mux.Route("/api/v1", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {

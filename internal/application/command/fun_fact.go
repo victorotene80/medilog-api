@@ -1,7 +1,7 @@
 package command
 
 type CreateFunFactCommand struct {
-	Title             *string
+	Title             string
 	Text              string
 	Category          *string
 	TargetCountryCode *string
@@ -13,7 +13,7 @@ type CreateFunFactCommand struct {
 
 type UpdateFunFactCommand struct {
 	ID                int64
-	Title             *string
+	Title             string
 	Text              string
 	Category          *string
 	TargetCountryCode *string

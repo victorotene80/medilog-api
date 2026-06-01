@@ -24,6 +24,17 @@ func NewDashboardHandler(
 	return &DashboardHandler{commandBus: commandBus, validator: validator}
 }
 
+// GetDashboard godoc
+//
+//	@Summary     Get dashboard
+//	@Description Returns dashboard data for the authenticated user.
+//	@Tags        Dashboard
+//	@Produce     json
+//	@Security    BearerAuth
+//	@Success     200 {object} response.APIResponse[response.DashboardResponse]
+//	@Failure     401 {object} response.APIResponse[struct{}]
+//	@Failure     404 {object} response.APIResponse[struct{}]
+//	@Router      /dashboard [get]
 func (h *DashboardHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 	userID, ok := UserIDFrom(r.Context())
 	if !ok {

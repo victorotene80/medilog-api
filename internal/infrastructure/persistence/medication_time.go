@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence/models"
@@ -44,5 +45,8 @@ func (r *MedicationTimeRepository) SaveAll(ctx context.Context, times []*entitie
 }
 
 func (r *MedicationTimeRepository) DeleteByMedicationID(ctx context.Context, medicationID int64) error {
+	if medicationID <= 0 {
+		return errors.New("medication id is required")
+	}
 	return r.db.WithContext(ctx).Where("medication_id = ?", medicationID).Delete(&models.MedicationTimeModel{}).Error
 }

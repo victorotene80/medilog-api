@@ -34,82 +34,63 @@ services:
       timeout: 5s
       retries: 5
 
-  kafka:
-    image: confluentinc/cp-kafka:7.6.0
-    container_name: medilog_kafka
-    restart: unless-stopped
-    ports:
-      # From your Mac: localhost:9092
-      # From Docker containers: kafka:29092
-      - "9092:9092"
-      - "29092:29092"
-    environment:
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_DOCKER
-      KAFKA_LISTENERS: PLAINTEXT_HOST://0.0.0.0:9092,PLAINTEXT_DOCKER://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_HOST://localhost:9092,PLAINTEXT_DOCKER://kafka:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_DOCKER:PLAINTEXT,CONTROLLER:PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
-    healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # Kafka + RabbitMQ — COMMENTED OUT
+  # Uncomment to re-enable messaging infrastructure.
+  # kafka:
+  #   image: confluentinc/cp-kafka:7.6.0
+  #   container_name: medilog_kafka
+  #   restart: unless-stopped
+  #   ports:
+  #     - "9092:9092"
+  #     - "29092:29092"
+  #   environment:
+  #     KAFKA_NODE_ID: 1
+  #     KAFKA_PROCESS_ROLES: broker,controller
+  #     KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+  #     KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  #     KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_DOCKER
+  #     KAFKA_LISTENERS: PLAINTEXT_HOST://0.0.0.0:9092,PLAINTEXT_DOCKER://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_HOST://localhost:9092,PLAINTEXT_DOCKER://kafka:29092
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_DOCKER:PLAINTEXT,CONTROLLER:PLAINTEXT
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #     KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+  #     CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+  #   healthcheck:
+  #     test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #
+  # rabbitmq:
+  #   image: rabbitmq:3.13-management
+  #   container_name: medilog_rabbitmq
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5672:5672"
+  #     - "15672:15672"
+  #   environment:
+  #     RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+  #     RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+  #   healthcheck:
+  #     test: ["CMD", "rabbitmq-diagnostics", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #
+  # kafka-ui:
+  #   image: provectuslabs/kafka-ui:v0.7.2
+  #   container_name: medilog_kafka_ui
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8090:8080"
+  #   environment:
+  #     KAFKA_CLUSTERS_0_NAME: local
+  #     KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+  #   depends_on:
+  #     kafka:
+  #       condition: service_healthy
 
-  rabbitmq:
-    image: rabbitmq:3.13-management
-    container_name: medilog_rabbitmq
-    restart: unless-stopped
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:v0.7.2
-    container_name: medilog_kafka_ui
-    restart: unless-stopped
-    ports:
-      - "8090:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-    depends_on:
-      kafka:
-        condition: service_healthy
-
-
-  # Observability stack
-
-
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.151.0
-    container_name: medilog_otel_collector
-    restart: unless-stopped
-    command: ["--config=/etc/otel/config.yaml"]
-    volumes:
-      - ./observability/otel-collector-config.yaml:/etc/otel/config.yaml:ro
-    ports:
-      - "4317:4317" # OTLP gRPC
-      - "4318:4318" # OTLP HTTP
-      - "8888:8888" # Collector self-metrics
-    depends_on:
-      - prometheus
-      - loki
-      - tempo
-
+  # Observability stack — Prometheus + Grafana (lightweight, no OTel)
   prometheus:
     image: docker.io/prom/prometheus:v2.55.1
     container_name: medilog_prometheus
@@ -123,47 +104,6 @@ services:
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
-
-  loki:
-    image: docker.io/grafana/loki:3.0.0
-    container_name: medilog_loki
-    restart: unless-stopped
-    command: -config.file=/etc/loki/config.yaml
-    volumes:
-      - ./observability/loki-config.yaml:/etc/loki/config.yaml:ro
-      - loki_data:/loki
-    ports:
-      - "3100:3100"
-  
-  alloy:
-    image: docker.io/grafana/alloy:latest
-    container_name: medilog_alloy
-    restart: unless-stopped
-    command:
-      - run
-      - /etc/alloy/config.alloy
-      - --server.http.listen-addr=0.0.0.0:12345
-    ports:
-      - "12345:12345"
-    volumes:
-      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    depends_on:
-      - loki
-
-  tempo:
-    image: docker.io/grafana/tempo:2.5.0
-    container_name: medilog_tempo
-    restart: unless-stopped
-    command: ["-config.file=/etc/tempo/config.yaml"]
-    volumes:
-      - ./observability/tempo-config.yaml:/etc/tempo/config.yaml:ro
-      - tempo_data:/var/tempo
-    ports:
-      - "3200:3200"
-      # Keep this internal-ish. Docker will publish it on a random host port.
-      # Collector should use tempo:4317 inside Docker.
-      #- "4317"
 
   grafana:
     image: docker.io/grafana/grafana:10.4.2
@@ -180,9 +120,6 @@ services:
       - "3000:3000"
     depends_on:
       - prometheus
-      - loki
-      - tempo
-
 
   # Application
   api:
@@ -210,31 +147,29 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
 
-      KAFKA_BROKERS: kafka:29092
-      RABBITMQ_DSN: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
+      #KAFKA_BROKERS: kafka:29092
+      #RABBITMQ_DSN: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
 
-      # Telemetry
-      OTEL_ENABLED: "true"
-      OTEL_SERVICE_NAME: medilog-api
-      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-0.1.0}
-      OTEL_EXPORTER_ENDPOINT: otel-collector:4317
-      OTEL_EXPORTER_INSECURE: "true"
+      # Telemetry — COMMENTED OUT
+      #OTEL_ENABLED: "true"
+      #OTEL_SERVICE_NAME: medilog-api
+      #OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-0.1.0}
+      #OTEL_EXPORTER_ENDPOINT: otel-collector:4317
+      #OTEL_EXPORTER_INSECURE: "true"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-      otel-collector:
-        condition: service_started
+      #rabbitmq:
+      #  condition: service_healthy
+      #kafka:
+      #  condition: service_healthy
+      #otel-collector:
+      #  condition: service_started
 
 volumes:
   medilog_postgres_data:
   redis_data:
   prometheus_data:
-  loki_data:
-  tempo_data:
   grafana_data:

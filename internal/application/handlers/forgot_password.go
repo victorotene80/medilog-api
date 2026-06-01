@@ -63,7 +63,6 @@ func (h *ForgotPasswordHandler) Handle(
 		}
 	}
 
-	userIDInt := agg.ID
 	if err := h.otpRepo.InvalidatePreviousByRecipientAndPurpose(
 		ctx, cmd.Recipient, string(valueobjects.OTPPurposePasswordReset), now,
 	); err != nil {
@@ -71,7 +70,7 @@ func (h *ForgotPasswordHandler) Handle(
 	}
 
 	otp, plainCode, err := h.otpService.NewOTP(
-		&userIDInt,
+		agg.ID,
 		cmd.Recipient,
 		valueobjects.OTPChannelSMS,
 		valueobjects.OTPPurposePasswordReset,

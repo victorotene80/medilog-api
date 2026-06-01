@@ -7,10 +7,13 @@ import (
 	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	outboxContracts "github.com/victorotene80/medilog-api/internal/infrastructure/messaging/outbox"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence"
+	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence/gormmetrics"
 	"github.com/victorotene80/medilog-api/internal/shared/config"
+	applogging "github.com/victorotene80/medilog-api/internal/shared/logging"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	gormlog "gorm.io/gorm/logger"
 )
 
 type Persistence struct {
@@ -40,7 +43,7 @@ type Persistence struct {
 }
 
 func initializePersistence(cfg *config.Config, logger *zap.Logger) (*Persistence, error) {
-	db, err := newDatabase(cfg.Database)
+	db, err := newDatabase(cfg.Database, logger)
 	if err != nil {
 		logger.Fatal("failed to initialize database", zap.Error(err))
 		return nil, fmt.Errorf("db init failed: %w", err)
@@ -92,7 +95,7 @@ func initializePersistence(cfg *config.Config, logger *zap.Logger) (*Persistence
 	}, nil
 }
 
-func newDatabase(cfg config.DatabaseConfig) (*gorm.DB, error) {
+func newDatabase(cfg config.DatabaseConfig, logger *zap.Logger) (*gorm.DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%d sslmode=%s",
 		cfg.Host,
@@ -103,9 +106,19 @@ func newDatabase(cfg config.DatabaseConfig) (*gorm.DB, error) {
 		cfg.SSLMode,
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: applogging.NewGormLogger(logger, applogging.GormConfig{
+			SlowThreshold:             500 * time.Millisecond,
+			LogLevel:                  gormlog.Warn,
+			IgnoreRecordNotFoundError: true,
+		}),
+	})
 	if err != nil {
 		return nil, err
+	}
+
+	if err := db.Use(gormmetrics.Plugin{}); err != nil {
+		return nil, fmt.Errorf("gorm metrics plugin: %w", err)
 	}
 
 	sqlDB, err := db.DB()

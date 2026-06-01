@@ -5,21 +5,23 @@ import (
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
 	"github.com/victorotene80/medilog-api/internal/domain/valueobjects"
+	"gorm.io/gorm"
 )
 
 type AIConversationModel struct {
-	ID                  int64      `gorm:"column:id;primaryKey;autoIncrement"`
-	PublicID            string     `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
-	UserID              int64      `gorm:"column:user_id;not null;index"`
-	Title               *string    `gorm:"column:title"`
-	RelatedMedicationID *int64     `gorm:"column:related_medication_id"`
-	RelatedVisitID      *int64     `gorm:"column:related_visit_id"`
-	Summary             *string    `gorm:"column:summary"`
-	SummaryUpTo         *int64     `gorm:"column:summary_up_to"`
-	Status              string     `gorm:"column:status;not null;default:active"`
-	LastMessageAt       *time.Time `gorm:"column:last_message_at"`
-	CreatedAt           time.Time  `gorm:"column:created_at;autoCreateTime"`
-	UpdatedAt           time.Time  `gorm:"column:updated_at;autoUpdateTime"`
+	ID                  int64          `gorm:"column:id;primaryKey;autoIncrement"`
+	PublicID            string         `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
+	UserID              int64          `gorm:"column:user_id;not null;index"`
+	Title               *string        `gorm:"column:title"`
+	RelatedMedicationID *int64         `gorm:"column:related_medication_id"`
+	RelatedVisitID      *int64         `gorm:"column:related_visit_id"`
+	Summary             *string        `gorm:"column:summary"`
+	SummaryUpTo         *int64         `gorm:"column:summary_up_to"`
+	Status              string         `gorm:"column:status;not null;default:active"`
+	LastMessageAt       *time.Time     `gorm:"column:last_message_at"`
+	CreatedAt           time.Time      `gorm:"column:created_at;autoCreateTime"`
+	UpdatedAt           time.Time      `gorm:"column:updated_at;autoUpdateTime"`
+	DeletedAt           gorm.DeletedAt `gorm:"column:deleted_at;index"`
 }
 
 func (AIConversationModel) TableName() string { return "ai_conversations" }

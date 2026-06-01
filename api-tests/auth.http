@@ -1,0 +1,124 @@
+@baseUrl = http://localhost:8080/api/v1
+@email = test@example.com
+@phone = +2347015332038
+@password = NewPassword123!
+
+### Register
+# @name register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "first_name": "Test",
+  "last_name": "User",
+  "email": "{{email}}",
+  "phone": "{{phone}}",
+  "password": "{{password}}",
+  "dob": "1995-06-15",
+  "sex": 1,
+  "blood_type": "A+",
+  "country_code": "NG"
+}
+
+### Login
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "phone": "{{phone}}",
+  "password": "{{password}}"
+}
+
+### Google Login
+# @name googleLogin
+POST {{baseUrl}}/auth/google
+Content-Type: application/json
+Accept: application/json
+
+{
+  "idToken": "{{googleIdToken}}"
+}
+
+### Forgot Password
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: application/json
+Accept: application/json
+
+{
+  "recipient": "{{email}}"
+}
+
+### Reset Password
+POST {{baseUrl}}/auth/reset-password
+Content-Type: application/json
+Accept: application/json
+
+{
+  "recipient": "{{email}}",
+  "otp_code": "{{otpCode}}",
+  "new_password": "{{password}}"
+}
+
+### Request OTP
+POST {{baseUrl}}/auth/otp/request
+Content-Type: application/json
+Accept: application/json
+
+{
+  "recipient": "{{phone}}",
+  "channel": "sms",
+  "purpose": "phone_verification"
+}
+
+### Verify OTP
+POST {{baseUrl}}/auth/otp/verify
+Content-Type: application/json
+Accept: application/json
+
+{
+  "recipient": "{{phone}}",
+  "code": "{{otpCode}}",
+  "channel": "sms",
+  "purpose": "phone_verification"
+}
+
+### Verify Onboarding OTP
+# @name verifyOnboarding
+POST {{baseUrl}}/auth/otp/verify-onboarding
+Content-Type: application/json
+Accept: application/json
+
+{
+  "recipient": "{{phone}}",
+  "code": "{{otpCode}}",
+  "channel": "sms",
+  "purpose": "phone_verification"
+}
+
+### Logout
+# @name logout
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+### Change Password
+POST {{baseUrl}}/auth/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "old_password": "{{password}}",
+  "new_password": "NewPassword456!"
+}
+
+### --- Extracted Tokens ---
+# Run Login or Verify Onboarding first (they are named # @name login / # @name verifyOnboarding).
+# These variables are resolved lazily — REST Client will look up the last response from the named request.
+@accessToken = {{login.response.body.data.tokens.access_token}}
+@refreshToken = {{login.response.body.data.tokens.refresh_token}}
+@onboardingAccessToken = {{verifyOnboarding.response.body.data.tokens.access_token}}

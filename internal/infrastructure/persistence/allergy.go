@@ -116,7 +116,7 @@ func (r *AllergyRepository) Update(ctx context.Context, allergy *entities.Allerg
 		Model(&models.AllergyModel{}).
 		Where("id = ?", allergy.ID).
 		Select("*").
-		Omit("id", "created_at").
+		Omit("id", "created_at", "deleted_at").
 		Updates(m)
 
 	if result.Error != nil {

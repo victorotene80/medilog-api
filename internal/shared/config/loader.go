@@ -29,7 +29,7 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	messaging := loadMessaging()
+	//messaging := loadMessaging() // COMMENTED OUT — Kafka + RabbitMQ
 
 	googleCfg, err := loadGoogle()
 	if err != nil {
@@ -51,10 +51,10 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	telemetry, err := loadTelemetry()
-	if err != nil {
-		return nil, err
-	}
+	//telemetry, err := loadTelemetry() // COMMENTED OUT — OTel observability
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	twilio, err := loadTwilio()
 	if err != nil {
@@ -80,13 +80,13 @@ func Load() (*Config, error) {
 		Security:  security,
 		Database:  database,
 		Redis:     redisCfg,
-		Messaging: messaging,
+		//Messaging: messaging, // COMMENTED OUT — Kafka + RabbitMQ
 		HTTP:      httpCfg,
 		Google:    googleCfg,
 		AI:        ai,
 		Claude:    claude,
 		OTP:       otp,
-		Telemetry: telemetry,
+		//Telemetry: telemetry, // COMMENTED OUT — OTel observability
 		Twilio:    twilio,
 		BulkSms:   bulkSms,
 		SMS:       sms,
@@ -267,15 +267,15 @@ func loadOTP() (OTPConfig, error) {
 
 }
 
-func loadTelemetry() (TelemetryConfig, error) {
-	return TelemetryConfig{
-		Enabled:          getBoolOrDefault("OTEL_ENABLED", false),
-		ServiceName:      getStringOrDefault("OTEL_SERVICE_NAME", "medilog-api"),
-		ServiceVersion:   getStringOrDefault("OTEL_SERVICE_VERSION", "0.1.0"),
-		ExporterEndpoint: getStringOrDefault("OTEL_EXPORTER_ENDPOINT", "localhost:4317"),
-		ExporterInsecure: getBoolOrDefault("OTEL_EXPORTER_INSECURE", true),
-	}, nil
-}
+//func loadTelemetry() (TelemetryConfig, error) { // COMMENTED OUT — OTel observability
+//	return TelemetryConfig{
+//		Enabled:          getBoolOrDefault("OTEL_ENABLED", false),
+//		ServiceName:      getStringOrDefault("OTEL_SERVICE_NAME", "medilog-api"),
+//		ServiceVersion:   getStringOrDefault("OTEL_SERVICE_VERSION", "0.1.0"),
+//		ExporterEndpoint: getStringOrDefault("OTEL_EXPORTER_ENDPOINT", "localhost:4317"),
+//		ExporterInsecure: getBoolOrDefault("OTEL_EXPORTER_INSECURE", true),
+//	}, nil
+//}
 
 func loadClaude() (ClaudeConfig, error) {
 	apiKey := getStringOrDefault("CLAUDE_API_KEY", "")
@@ -383,44 +383,45 @@ func loadDatabase() (DatabaseConfig, error) {
 	}, nil
 }
 
-func loadMessaging() MessagingConfig {
-	return MessagingConfig{
-		Kafka: KafkaConfig{
-			Brokers:         splitCSV(getStringOrDefault("KAFKA_BROKERS", "localhost:9092")),
-			TopicPrefix:     getStringOrDefault("KAFKA_TOPIC_PREFIX", "auth."),
-			ConsumerGroupID: getStringOrDefault("KAFKA_CONSUMER_GROUP_ID", "auth-service"),
-			WriteTimeout:    getDurationOrDefault("KAFKA_WRITE_TIMEOUT", 10*time.Second),
-		},
-		RabbitMQ: RabbitMQConfig{
-			DSN:            getStringOrDefault("RABBITMQ_DSN", "amqp://guest:guest@localhost:5672/"),
-			Exchange:       getStringOrDefault("RABBITMQ_EXCHANGE", "auth.tasks"),
-			RetryExchange:  getStringOrDefault("RABBITMQ_RETRY_EXCHANGE", "auth.tasks.retry"),
-			DLExchange:     getStringOrDefault("RABBITMQ_DL_EXCHANGE", "auth.tasks.dlx"),
-			MaxRetries:     getIntOrDefault("RABBITMQ_MAX_RETRIES", 3),
-			RetryDelay:     getDurationOrDefault("RABBITMQ_RETRY_DELAY", 15*time.Second),
-			PublishTimeout: getDurationOrDefault("RABBITMQ_PUBLISH_TIMEOUT", 5*time.Second),
-		},
-		Relay: RelayConfig{
-			PollInterval:       getDurationOrDefault("RELAY_POLL_INTERVAL", 1*time.Second),
-			BatchSize:          getIntOrDefault("RELAY_BATCH_SIZE", 50),
-			ReclaimAfter:       getDurationOrDefault("RELAY_RECLAIM_AFTER", 2*time.Minute),
-			DefaultEventBroker: "event",
-			DefaultTaskBroker:  "task",
-			EventRoutes: map[string]string{
-				"auth.user.created.v1":     "event",
-				"auth.user.locked.v1":      "event",
-				"auth.session.created.v1":  "event",
-				"auth.session.revoked.v1":  "event",
-				"auth.password.changed.v1": "event",
-			},
-			TaskRoutes: map[string]string{
-				"auth.send-welcome-email.v1":  "task",
-				"auth.send-verification.v1":   "task",
-				"auth.sync-analytics-user.v1": "task",
-			},
-		},
-	}
-}
+//loadMessaging — COMMENTED OUT —
+//func loadMessaging() MessagingConfig {
+//	return MessagingConfig{
+//		Kafka: KafkaConfig{
+//			Brokers:         splitCSV(getStringOrDefault("KAFKA_BROKERS", "localhost:9092")),
+//			TopicPrefix:     getStringOrDefault("KAFKA_TOPIC_PREFIX", "auth."),
+//			ConsumerGroupID: getStringOrDefault("KAFKA_CONSUMER_GROUP_ID", "auth-service"),
+//			WriteTimeout:    getDurationOrDefault("KAFKA_WRITE_TIMEOUT", 10*time.Second),
+//		},
+//		RabbitMQ: RabbitMQConfig{
+//			DSN:            getStringOrDefault("RABBITMQ_DSN", "amqp://guest:guest@localhost:5672/"),
+//			Exchange:       getStringOrDefault("RABBITMQ_EXCHANGE", "auth.tasks"),
+//			RetryExchange:  getStringOrDefault("RABBITMQ_RETRY_EXCHANGE", "auth.tasks.retry"),
+//			DLExchange:     getStringOrDefault("RABBITMQ_DL_EXCHANGE", "auth.tasks.dlx"),
+//			MaxRetries:     getIntOrDefault("RABBITMQ_MAX_RETRIES", 3),
+//			RetryDelay:     getDurationOrDefault("RABBITMQ_RETRY_DELAY", 15*time.Second),
+//			PublishTimeout: getDurationOrDefault("RABBITMQ_PUBLISH_TIMEOUT", 5*time.Second),
+//		},
+//		Relay: RelayConfig{
+//			PollInterval:       getDurationOrDefault("RELAY_POLL_INTERVAL", 1*time.Second),
+//			BatchSize:          getIntOrDefault("RELAY_BATCH_SIZE", 50),
+//			ReclaimAfter:       getDurationOrDefault("RELAY_RECLAIM_AFTER", 2*time.Minute),
+//			DefaultEventBroker: "event",
+//			DefaultTaskBroker:  "task",
+//			EventRoutes: map[string]string{
+//				"auth.user.created.v1":     "event",
+//				"auth.user.locked.v1":      "event",
+//				"auth.session.created.v1":  "event",
+//				"auth.session.revoked.v1":  "event",
+//				"auth.password.changed.v1": "event",
+//			},
+//			TaskRoutes: map[string]string{
+//				"auth.send-welcome-email.v1":  "task",
+//				"auth.send-verification.v1":   "task",
+//				"auth.sync-analytics-user.v1": "task",
+//			},
+//		},
+//	}
+//}
 
 func splitCSV(v string) []string {
 	parts := strings.Split(v, ",")

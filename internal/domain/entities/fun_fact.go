@@ -4,7 +4,7 @@ import "time"
 
 type FunFact struct {
 	ID                int64
-	Title             *string
+	Title             string
 	Text              string
 	Category          *string
 	TargetCountryCode *string

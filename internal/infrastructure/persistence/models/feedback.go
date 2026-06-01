@@ -8,6 +8,7 @@ import (
 
 type FeedbackModel struct {
 	ID          int64     `gorm:"column:id;primaryKey;autoIncrement"`
+	PublicID    string    `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
 	UserID      *int64    `gorm:"column:user_id"`
 	Rating      *int      `gorm:"column:rating"`
 	Title       *string   `gorm:"column:title"`
@@ -24,6 +25,7 @@ func (FeedbackModel) TableName() string { return "feedback" }
 func FeedbackToEntity(m *FeedbackModel) *entities.Feedback {
 	return &entities.Feedback{
 		ID:          m.ID,
+		PublicID:    m.PublicID,
 		UserID:      m.UserID,
 		Rating:      m.Rating,
 		Title:       m.Title,
@@ -39,6 +41,7 @@ func FeedbackToEntity(m *FeedbackModel) *entities.Feedback {
 func FeedbackToModel(e *entities.Feedback) *FeedbackModel {
 	return &FeedbackModel{
 		ID:          e.ID,
+		PublicID:    e.PublicID,
 		UserID:      e.UserID,
 		Rating:      e.Rating,
 		Title:       e.Title,

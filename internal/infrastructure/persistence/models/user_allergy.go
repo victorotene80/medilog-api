@@ -5,18 +5,20 @@ import (
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
 	"github.com/victorotene80/medilog-api/internal/domain/valueobjects"
+	"gorm.io/gorm"
 )
 
 type UserAllergyModel struct {
-	ID          int64     `gorm:"column:id;primaryKey;autoIncrement"`
-	PublicID    string    `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
-	UserID      int64     `gorm:"column:user_id;not null"`
-	AllergyID   *int64    `gorm:"column:allergy_id"`
-	Name        string    `gorm:"column:name;not null"`
-	Description *string   `gorm:"column:description"`
-	Severity    *int16    `gorm:"column:severity"` // smallint → *int16, never a value object
-	Category    int       `gorm:"column:category;not null"`
-	CreatedAt   time.Time `gorm:"column:created_at"`
+	ID          int64          `gorm:"column:id;primaryKey;autoIncrement"`
+	PublicID    string         `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
+	UserID      int64          `gorm:"column:user_id;not null"`
+	AllergyID   *int64         `gorm:"column:allergy_id"`
+	Name        string         `gorm:"column:name;not null"`
+	Description *string        `gorm:"column:description"`
+	Severity    *int16         `gorm:"column:severity"` // smallint → *int16, never a value object
+	Category    int            `gorm:"column:category;not null"`
+	CreatedAt   time.Time      `gorm:"column:created_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;index"`
 }
 
 func (UserAllergyModel) TableName() string {

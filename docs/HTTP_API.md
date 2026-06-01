@@ -68,6 +68,7 @@ Public endpoints do not require auth. Pre-onboarding endpoints require auth but 
 | Method | Path | Access |
 | --- | --- | --- |
 | `GET` | `/health` | Public |
+| `GET` | `/metrics` | Public |
 | `POST` | `/api/v1/auth/register` | Public |
 | `POST` | `/api/v1/auth/login` | Public |
 | `POST` | `/api/v1/auth/google` | Public |
@@ -144,6 +145,16 @@ ok
 
 ```bash
 curl -i "http://localhost:8080/health"
+```
+
+### `GET /metrics`
+
+Returns Prometheus metrics in text exposition format.
+
+Response: `200 OK`
+
+```bash
+curl -i "http://localhost:8080/metrics"
 ```
 
 ## Auth
@@ -489,7 +500,7 @@ Request:
 }
 ```
 
-Validation: `text` required; `title` max 200; `category` max 100; `target_country_code` max 10; ages min 0; `allergy_category` 1 to 5.
+Validation: `title` required, 1 to 200 characters; `text` required; `category` max 100; `target_country_code` max 10; ages min 0; `allergy_category` 1 to 5.
 
 Success: `201 Created`, code `FUN_FACT_CREATED`.
 

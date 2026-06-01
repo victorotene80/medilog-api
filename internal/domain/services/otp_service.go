@@ -88,7 +88,7 @@ func (s *OTPService) Verify(code string, hash string) bool {
 }
 
 func (s *OTPService) NewOTP(
-	userID *int64,
+	userID int64,
 	recipient string,
 	channel valueobjects.OTPChannel,
 	purpose valueobjects.OTPPurpose,

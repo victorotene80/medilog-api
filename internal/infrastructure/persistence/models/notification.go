@@ -8,6 +8,7 @@ import (
 
 type NotificationModel struct {
 	ID          int64      `gorm:"column:id;primaryKey;autoIncrement"`
+	PublicID    string     `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
 	UserID      int64      `gorm:"column:user_id;not null;index"`
 	Title       string     `gorm:"column:title;not null"`
 	Body        string     `gorm:"column:body;not null"`
@@ -27,6 +28,7 @@ func (NotificationModel) TableName() string { return "notifications" }
 func NotificationToEntity(m *NotificationModel) *entities.Notification {
 	return &entities.Notification{
 		ID:          m.ID,
+		PublicID:    m.PublicID,
 		UserID:      m.UserID,
 		Title:       m.Title,
 		Body:        m.Body,
@@ -45,6 +47,7 @@ func NotificationToEntity(m *NotificationModel) *entities.Notification {
 func NotificationToModel(e *entities.Notification) *NotificationModel {
 	return &NotificationModel{
 		ID:          e.ID,
+		PublicID:    e.PublicID,
 		UserID:      e.UserID,
 		Title:       e.Title,
 		Body:        e.Body,

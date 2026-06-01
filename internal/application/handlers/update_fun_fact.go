@@ -28,6 +28,10 @@ func (h *UpdateFunFactHandler) Handle(
 	if strings.TrimSpace(cmd.Text) == "" {
 		return struct{}{}, errors.New("fun fact text is required")
 	}
+	title := strings.TrimSpace(cmd.Title)
+	if title == "" {
+		return struct{}{}, errors.New("fun fact title is required")
+	}
 	if err := validateFunFactRanges(cmd.TargetAgeMin, cmd.TargetAgeMax, cmd.AllergyCategory); err != nil {
 		return struct{}{}, err
 	}
@@ -40,7 +44,7 @@ func (h *UpdateFunFactHandler) Handle(
 		return struct{}{}, errors.New("fun fact not found")
 	}
 
-	existing.Title = sanitizeOptionalString(cmd.Title)
+	existing.Title = title
 	existing.Text = strings.TrimSpace(cmd.Text)
 	existing.Category = sanitizeOptionalString(cmd.Category)
 	existing.TargetCountryCode = sanitizeOptionalString(cmd.TargetCountryCode)

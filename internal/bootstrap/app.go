@@ -1,13 +1,10 @@
 package bootstrap
 
 import (
-	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/go-redis/redis/v8"
-	otellog "go.opentelemetry.io/otel/log"
 	"go.uber.org/zap"
 
 	"github.com/victorotene80/medilog-api/internal/shared/config"
@@ -34,18 +31,19 @@ func InitializeApp() (*App, error) {
 		return nil, err
 	}
 
-	tel, err := initializeTelemetry(cfg, bootstrapLog)
-	if err != nil {
-		bootstrapLog.Fatal("failed to initialize telemetry", zap.Error(err))
-		return nil, err
-	}
+	// Telemetry (OTel) — COMMENTED OUT
+	// Uncomment to re-enable.
+	// tel, err := initializeTelemetry(cfg, bootstrapLog)
+	// if err != nil {
+	// 	bootstrapLog.Fatal("failed to initialize telemetry", zap.Error(err))
+	// 	return nil, err
+	// }
+	// var otelLP otellog.LoggerProvider
+	// if tel != nil {
+	// 	otelLP = tel.LoggerProvider
+	// }
 
-	var otelLP otellog.LoggerProvider
-	if tel != nil {
-		otelLP = tel.LoggerProvider
-	}
-
-	logProvider, err := logging.NewLoggerProvider(otelLP)
+	logProvider, err := logging.NewLoggerProvider(nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize logger: %w", err)
 	}
@@ -70,21 +68,21 @@ func InitializeApp() (*App, error) {
 
 	messagePublisher := initializeMessagePublisher(persistenceLayer, logger)
 
-	consumers, stopMessaging := initializeMessaging(persistenceLayer, cfg, logger)
-	registerConsumers(consumers, logger)
-
-	consumeCtx, cancelConsume := context.WithCancel(context.Background())
-
-	go func() {
-		if err := consumers.EventConsumer.Consume(consumeCtx); err != nil {
-			logger.Error("event consumer exited", zap.Error(err))
-		}
-	}()
-	go func() {
-		if err := consumers.TaskConsumer.Consume(consumeCtx); err != nil {
-			logger.Error("task consumer exited", zap.Error(err))
-		}
-	}()
+	// Messaging (Kafka + RabbitMQ) — COMMENTED OUT
+	// Uncomment to re-enable.
+	// consumers, stopMessaging := initializeMessaging(persistenceLayer, cfg, logger)
+	// registerConsumers(consumers, logger)
+	// consumeCtx, cancelConsume := context.WithCancel(context.Background())
+	// go func() {
+	// 	if err := consumers.EventConsumer.Consume(consumeCtx); err != nil {
+	// 		logger.Error("event consumer exited", zap.Error(err))
+	// 	}
+	// }()
+	// go func() {
+	// 	if err := consumers.TaskConsumer.Consume(consumeCtx); err != nil {
+	// 		logger.Error("task consumer exited", zap.Error(err))
+	// 	}
+	// }()
 
 	commandBus, authSvc := initializeCommands(
 		persistenceLayer,
@@ -98,12 +96,10 @@ func InitializeApp() (*App, error) {
 	router := initializeHTTP(commandBus, logger, authSvc, redisClient)
 
 	stop := func() {
-		cancelConsume()
-		stopMessaging()
+		//cancelConsume()
+		//stopMessaging()
 
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		tel.Shutdown(shutdownCtx)
+		//tel.Shutdown(shutdownCtx)
 
 		logger.Info("app shutdown complete")
 		logProvider.Sync()

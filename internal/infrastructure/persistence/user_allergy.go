@@ -54,7 +54,18 @@ func (r *UserAllergyRepository) Save(ctx context.Context, allergy *entities.User
 }
 
 func (r *UserAllergyRepository) Delete(ctx context.Context, id int64) error {
-	return r.db.WithContext(ctx).Delete(&models.UserAllergyModel{}, id).Error
+	if id <= 0 {
+		return errors.New("user allergy id is required")
+	}
+
+	result := r.db.WithContext(ctx).Delete(&models.UserAllergyModel{}, id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *UserAllergyRepository) SaveBatch(

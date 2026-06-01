@@ -1,7 +1,6 @@
 package bootstrap
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/go-redis/redis/v8"
@@ -50,15 +49,11 @@ func initializeHTTP(
 	authMiddleware := appmw.NewAuthMiddleware(authSvc, logger)
 	rateLimiter := appmw.NewRateLimiter(redisClient, logger)
 
-	// Telemetry middleware — wraps every route with a server span + metrics.
-	// NewTelemetryMiddleware returns an error only when the global MeterProvider
-	// has not been set, which cannot happen here because initializeTelemetry
-	// runs before initializeHTTP in InitializeApp.
-	telemetryMiddleware, err := appmw.NewTelemetryMiddleware()
-	if err != nil {
-		// Non-recoverable: the meter is misconfigured.
-		log.Fatalf("failed to create telemetry middleware: %v", err)
-	}
+	// Telemetry middleware — COMMENTED OUT
+	// telemetryMiddleware, err := appmw.NewTelemetryMiddleware()
+	// if err != nil {
+	// 	log.Fatalf("failed to create telemetry middleware: %v", err)
+	// }
 
 	router := rest.NewRouter(
 		logger,
@@ -79,5 +74,5 @@ func initializeHTTP(
 		dashboardHandler,
 	)
 
-	return telemetryMiddleware.Handle(router.Setup())
+	return router.Setup()
 }

@@ -9,7 +9,7 @@ import (
 
 type UserModel struct {
 	ID                    int64      `gorm:"column:id;primaryKey;autoIncrement"`
-	PublicID              *string    `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
+	PublicID              string     `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
 	Email                 *string    `gorm:"column:email"`
 	Phone                 *string    `gorm:"column:phone"`
 	FirstName             string     `gorm:"column:first_name;not null"`
@@ -25,7 +25,7 @@ type UserModel struct {
 	PhoneVerifiedAt       *time.Time `gorm:"column:phone_verified_at"`
 	IsOnboardingCompleted bool       `gorm:"column:is_onboarding_completed;not null"`
 	PasswordChangedAt     *time.Time `gorm:"column:password_changed_at"`
-	FailedLoginAttempts   int        `gorm:"column:failed_login_attempts;not null"`
+	FailedLoginAttempts   *int       `gorm:"column:failed_login_attempts;default:0"`
 	LockedUntil           *time.Time `gorm:"column:locked_until"`
 	LastLoginAt           *time.Time `gorm:"column:last_login_at"`
 	LastLoginIP           *string    `gorm:"column:last_login_ip"`
@@ -43,11 +43,6 @@ func UserModelToEntity(m UserModel) (*entities.User, error) {
 	status, err := valueobjects.NewUserStatus(m.Status)
 	if err != nil {
 		return nil, err
-	}
-
-	var publicID string
-	if m.PublicID != nil {
-		publicID = *m.PublicID
 	}
 
 	var sex *valueobjects.Sex
@@ -77,9 +72,14 @@ func UserModelToEntity(m UserModel) (*entities.User, error) {
 		countryCode = &value
 	}
 
+	failedLoginAttempts := 0
+	if m.FailedLoginAttempts != nil {
+		failedLoginAttempts = *m.FailedLoginAttempts
+	}
+
 	return &entities.User{
 		ID:                    m.ID,
-		PublicID:              publicID,
+		PublicID:              m.PublicID,
 		Email:                 m.Email,
 		Phone:                 m.Phone,
 		FirstName:             m.FirstName,
@@ -95,7 +95,7 @@ func UserModelToEntity(m UserModel) (*entities.User, error) {
 		PhoneVerifiedAt:       m.PhoneVerifiedAt,
 		IsOnboardingCompleted: m.IsOnboardingCompleted,
 		PasswordChangedAt:     m.PasswordChangedAt,
-		FailedLoginAttempts:   m.FailedLoginAttempts,
+		FailedLoginAttempts:   failedLoginAttempts,
 		LockedUntil:           m.LockedUntil,
 		LastLoginAt:           m.LastLoginAt,
 		LastLoginIP:           m.LastLoginIP,
@@ -107,11 +107,6 @@ func UserModelToEntity(m UserModel) (*entities.User, error) {
 }
 
 func UserEntityToModel(user entities.User) *UserModel {
-	var publicID *string
-	if user.PublicID != "" {
-		publicID = &user.PublicID
-	}
-
 	var sex *int
 	if user.Sex != nil {
 		value := int(*user.Sex)
@@ -135,9 +130,11 @@ func UserEntityToModel(user entities.User) *UserModel {
 		status = "active"
 	}
 
+	failedLoginAttempts := user.FailedLoginAttempts
+
 	return &UserModel{
 		ID:                    user.ID,
-		PublicID:              publicID,
+		PublicID:              user.PublicID,
 		Email:                 user.Email,
 		Phone:                 user.Phone,
 		FirstName:             user.FirstName,
@@ -153,7 +150,7 @@ func UserEntityToModel(user entities.User) *UserModel {
 		PhoneVerifiedAt:       user.PhoneVerifiedAt,
 		IsOnboardingCompleted: user.IsOnboardingCompleted,
 		PasswordChangedAt:     user.PasswordChangedAt,
-		FailedLoginAttempts:   user.FailedLoginAttempts,
+		FailedLoginAttempts:   &failedLoginAttempts,
 		LockedUntil:           user.LockedUntil,
 		LastLoginAt:           user.LastLoginAt,
 		LastLoginIP:           user.LastLoginIP,

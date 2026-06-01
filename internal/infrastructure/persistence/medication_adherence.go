@@ -58,7 +58,27 @@ func (r *MedicationAdherenceLogRepository) Save(ctx context.Context, log *entiti
 }
 
 func (r *MedicationAdherenceLogRepository) Update(ctx context.Context, log *entities.MedicationAdherenceLog) error {
-	return r.db.WithContext(ctx).Save(models.MedicationAdherenceLogToModel(log)).Error
+	if log == nil {
+		return errors.New("medication adherence log is required")
+	}
+	if log.ID <= 0 {
+		return errors.New("medication adherence log id is required")
+	}
+
+	model := models.MedicationAdherenceLogToModel(log)
+	result := r.db.WithContext(ctx).
+		Model(&models.MedicationAdherenceLogModel{}).
+		Where("id = ?", log.ID).
+		Select("*").
+		Omit("id", "created_at", "deleted_at").
+		Updates(model)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func toAdherenceEntities(ms []models.MedicationAdherenceLogModel) ([]*entities.MedicationAdherenceLog, error) {

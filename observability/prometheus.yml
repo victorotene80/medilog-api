@@ -11,7 +11,8 @@ scrape_configs:
     static_configs:
       - targets: ["localhost:9090"]
 
-  # Collector self-metrics (pipeline health, queue sizes, etc.)
-  - job_name: otel-collector
+  # API application metrics (promhttp /metrics endpoint)
+  - job_name: medilog-api
+    metrics_path: /metrics
     static_configs:
-      - targets: ["otel-collector:8888"]
+      - targets: ["host.docker.internal:8080"]

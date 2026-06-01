@@ -4,7 +4,7 @@ import "time"
 
 type OTPCode struct {
 	ID        int64
-	UserID    *int64
+	UserID    int64
 	Recipient string
 	CodeHash  string
 	Channel   string
