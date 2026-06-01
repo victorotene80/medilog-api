@@ -1,4 +1,35 @@
 @baseUrl = http://localhost:8080/api/v1
+@authPhone = +2347015332038
+@authPassword = NewPassword123!
+
+
+### Auth - Login And Store Tokens
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "phone": "{{authPhone}}",
+  "password": "{{authPassword}}"
+}
+
+> {%
+    let body = response.body || {};
+    if (typeof body === "string") {
+        body = JSON.parse(body);
+    }
+
+    const tokens = body.data && body.data.tokens ? body.data.tokens : null;
+    if (!tokens || !tokens.access_token || !tokens.refresh_token) {
+        throw new Error("Expected login response tokens at data.tokens.access_token and data.tokens.refresh_token");
+    }
+
+    client.global.set("accessToken", tokens.access_token);
+    client.global.set("authAccessToken", tokens.access_token);
+    client.global.set("refreshToken", tokens.refresh_token);
+    client.global.set("authRefreshToken", tokens.refresh_token);
+%}
 
 
 ### E2E 1 - List Master Drug Allergies
@@ -16,7 +47,7 @@ Accept: application/json
 
 ### E2E 2 - Add My Custom Drug Allergy
 POST {{baseUrl}}/health/allergies/
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Content-Type: application/json
 Accept: application/json
 
@@ -34,7 +65,7 @@ Accept: application/json
 
 ### E2E 3 - List My Allergies And Capture Penicillin
 GET {{baseUrl}}/health/allergies/
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Accept: application/json
 
 > {%
@@ -48,13 +79,13 @@ Accept: application/json
 
 ### E2E 4 - List My Drug Allergies
 GET {{baseUrl}}/health/allergies/?category=2
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Accept: application/json
 
 
 ### Optional - Add Master Allergy
 POST {{baseUrl}}/reference/allergies/
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Content-Type: application/json
 Accept: application/json
 
@@ -67,7 +98,7 @@ Accept: application/json
 
 ### Optional - Add My Allergy From Captured Master Allergy
 POST {{baseUrl}}/health/allergies/
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Content-Type: application/json
 Accept: application/json
 
@@ -86,5 +117,5 @@ Accept: application/json
 
 ### Optional Cleanup - Delete My Allergy
 DELETE {{baseUrl}}/health/allergies/{{userAllergyPublicId}}
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Accept: application/json

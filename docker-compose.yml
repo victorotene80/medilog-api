@@ -3,6 +3,21 @@ services:
     image: postgres:16-alpine
     container_name: medilog_postgres
     restart: unless-stopped
+    # Previous default used the Postgres image command with no explicit memory tuning.
+    # command: ["postgres"]
+    mem_limit: "${POSTGRES_MEMORY_LIMIT:-512MB}"
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}"
+      - "-c"
+      - "effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-384MB}"
+      - "-c"
+      - "work_mem=${POSTGRES_WORK_MEM:-4MB}"
+      - "-c"
+      - "maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}"
+      - "-c"
+      - "max_connections=${POSTGRES_MAX_CONNECTIONS:-50}"
     ports:
       # From your Mac: localhost:5433
       # From Docker containers: postgres:5432
@@ -25,7 +40,17 @@ services:
     restart: unless-stopped
     ports:
       - "6379:6379"
-    command: redis-server --requirepass ${REDIS_PASSWORD:-redis}
+    # Previous default kept Redis uncapped:
+    # command: redis-server --requirepass ${REDIS_PASSWORD:-redis}
+    mem_limit: "${REDIS_MEMORY_LIMIT:-512m}"
+    command:
+      - "redis-server"
+      - "--requirepass"
+      - "${REDIS_PASSWORD:-redis}"
+      - "--maxmemory"
+      - "${REDIS_MAXMEMORY:-512mb}"
+      - "--maxmemory-policy"
+      - "${REDIS_MAXMEMORY_POLICY:-allkeys-lru}"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -90,38 +115,65 @@ services:
   #     kafka:
   #       condition: service_healthy
 
-  # Observability stack — Prometheus + Grafana (lightweight, no OTel)
-  prometheus:
-    image: docker.io/prom/prometheus:v2.55.1
-    container_name: medilog_prometheus
+  # Observability stack — Netdata (active lightweight setup)
+  netdata:
+    image: docker.io/netdata/netdata:stable
+    container_name: medilog_netdata
     restart: unless-stopped
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.enable-remote-write-receiver"
-    volumes:
-      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
+    hostname: medilog-local
+    mem_limit: "${NETDATA_MEMORY_LIMIT:-256m}"
     ports:
-      - "9090:9090"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
-  grafana:
-    image: docker.io/grafana/grafana:10.4.2
-    container_name: medilog_grafana
-    restart: unless-stopped
+      - "19999:19999"
     environment:
-      GF_AUTH_ANONYMOUS_ENABLED: "true"
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
-      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      DOCKER_HOST: unix:///var/run/docker.sock
     volumes:
-      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
-      - grafana_data:/var/lib/grafana
-    ports:
-      - "3000:3000"
-    depends_on:
-      - prometheus
+      - ./observability/netdata/netdata.conf:/etc/netdata/netdata.conf:ro
+      - ./observability/netdata/go.d/prometheus.conf:/etc/netdata/go.d/prometheus.conf:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - netdata_lib:/var/lib/netdata
+      - netdata_cache:/var/cache/netdata
+    # Official host-level Netdata setup can enable broader host monitoring,
+    # but those options are left commented to keep this local stack lean.
+    # pid: host
+    # network_mode: host
+    # cap_add:
+    #   - SYS_PTRACE
+    #   - SYS_ADMIN
+    # security_opt:
+    #   - apparmor:unconfined
+
+  # Observability stack — Prometheus + Grafana (previous implementation)
+  # prometheus:
+  #   image: docker.io/prom/prometheus:v2.55.1
+  #   container_name: medilog_prometheus
+  #   restart: unless-stopped
+  #   command:
+  #     - "--config.file=/etc/prometheus/prometheus.yml"
+  #     - "--storage.tsdb.path=/prometheus"
+  #     - "--web.enable-remote-write-receiver"
+  #   volumes:
+  #     - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #     - prometheus_data:/prometheus
+  #   ports:
+  #     - "9090:9090"
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+
+  # grafana:
+  #   image: docker.io/grafana/grafana:10.4.2
+  #   container_name: medilog_grafana
+  #   restart: unless-stopped
+  #   environment:
+  #     GF_AUTH_ANONYMOUS_ENABLED: "true"
+  #     GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+  #     GF_AUTH_DISABLE_LOGIN_FORM: "true"
+  #   volumes:
+  #     - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+  #     - grafana_data:/var/lib/grafana
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - prometheus
 
   # Application
   api:
@@ -131,6 +183,8 @@ services:
     image: medilog-api-api:latest
     container_name: medilog_api
     restart: unless-stopped
+    # Previous default left the app container without a Compose memory hint.
+    mem_limit: "${API_MEMORY_LIMIT:-512m}"
     logging:
       driver: json-file
       options:
@@ -148,6 +202,11 @@ services:
 
       REDIS_HOST: redis
       REDIS_PORT: 6379
+
+      # Go runtime memory hints for local Compose.
+      # Previous default left Go GC unconstrained by Compose.
+      GOMEMLIMIT: ${API_GOMEMLIMIT:-384MiB}
+      GOGC: ${API_GOGC:-75}
 
       #KAFKA_BROKERS: kafka:29092
       #RABBITMQ_DSN: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
@@ -173,5 +232,8 @@ services:
 volumes:
   medilog_postgres_data:
   redis_data:
-  prometheus_data:
-  grafana_data:
+  netdata_lib:
+  netdata_cache:
+  # Prometheus/Grafana volumes kept commented for easy rollback.
+  # prometheus_data:
+  # grafana_data:

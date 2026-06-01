@@ -1,9 +1,40 @@
 @baseUrl = http://localhost:8080/api/v1
+@authPhone = +2347015332038
+@authPassword = NewPassword123!
+
+
+### Auth - Login And Store Tokens
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "phone": "{{authPhone}}",
+  "password": "{{authPassword}}"
+}
+
+> {%
+    let body = response.body || {};
+    if (typeof body === "string") {
+        body = JSON.parse(body);
+    }
+
+    const tokens = body.data && body.data.tokens ? body.data.tokens : null;
+    if (!tokens || !tokens.access_token || !tokens.refresh_token) {
+        throw new Error("Expected login response tokens at data.tokens.access_token and data.tokens.refresh_token");
+    }
+
+    client.global.set("accessToken", tokens.access_token);
+    client.global.set("authAccessToken", tokens.access_token);
+    client.global.set("refreshToken", tokens.refresh_token);
+    client.global.set("authRefreshToken", tokens.refresh_token);
+%}
 
 
 ### E2E 1 - Create Visit
 POST {{baseUrl}}/visits/
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Content-Type: application/json
 Accept: application/json
 
@@ -25,7 +56,7 @@ Accept: application/json
 
 ### E2E 2 - List Visits And Capture E2E Visit
 GET {{baseUrl}}/visits/
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Accept: application/json
 
 > {%
@@ -44,13 +75,13 @@ Accept: application/json
 
 ### E2E 3 - Get Visit
 GET {{baseUrl}}/visits/{{visitPublicId}}
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Accept: application/json
 
 
 ### E2E 4 - Update Visit
 PUT {{baseUrl}}/visits/{{visitPublicId}}
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Content-Type: application/json
 Accept: application/json
 
@@ -72,13 +103,13 @@ Accept: application/json
 
 ### E2E 5 - List Visits By Date Range
 GET {{baseUrl}}/visits/?from=2026-05-01&to=2026-05-31
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Accept: application/json
 
 
 ### Optional - Create Minimal Visit
 POST {{baseUrl}}/visits/
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Content-Type: application/json
 Accept: application/json
 
@@ -89,5 +120,5 @@ Accept: application/json
 
 ### Optional Cleanup - Delete Visit
 DELETE {{baseUrl}}/visits/{{visitPublicId}}
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Accept: application/json

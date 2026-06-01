@@ -32,6 +32,23 @@ Accept: application/json
   "password": "{{password}}"
 }
 
+> {%
+    let body = response.body || {};
+    if (typeof body === "string") {
+        body = JSON.parse(body);
+    }
+
+    const tokens = body.data && body.data.tokens ? body.data.tokens : null;
+    if (!tokens || !tokens.access_token || !tokens.refresh_token) {
+        throw new Error("Expected login response tokens at data.tokens.access_token and data.tokens.refresh_token");
+    }
+
+    client.global.set("accessToken", tokens.access_token);
+    client.global.set("authAccessToken", tokens.access_token);
+    client.global.set("refreshToken", tokens.refresh_token);
+    client.global.set("authRefreshToken", tokens.refresh_token);
+%}
+
 ### Google Login
 # @name googleLogin
 POST {{baseUrl}}/auth/google
@@ -41,6 +58,23 @@ Accept: application/json
 {
   "idToken": "{{googleIdToken}}"
 }
+
+> {%
+    let body = response.body || {};
+    if (typeof body === "string") {
+        body = JSON.parse(body);
+    }
+
+    const tokens = body.data && body.data.tokens ? body.data.tokens : null;
+    if (tokens && tokens.access_token) {
+        client.global.set("accessToken", tokens.access_token);
+        client.global.set("authAccessToken", tokens.access_token);
+    }
+    if (tokens && tokens.refresh_token) {
+        client.global.set("refreshToken", tokens.refresh_token);
+        client.global.set("authRefreshToken", tokens.refresh_token);
+    }
+%}
 
 ### Forgot Password
 POST {{baseUrl}}/auth/forgot-password
@@ -98,16 +132,34 @@ Accept: application/json
   "purpose": "phone_verification"
 }
 
+> {%
+    let body = response.body || {};
+    if (typeof body === "string") {
+        body = JSON.parse(body);
+    }
+
+    const tokens = body.data && body.data.tokens ? body.data.tokens : null;
+    if (!tokens || !tokens.access_token || !tokens.refresh_token) {
+        throw new Error("Expected onboarding response tokens at data.tokens.access_token and data.tokens.refresh_token");
+    }
+
+    client.global.set("accessToken", tokens.access_token);
+    client.global.set("authAccessToken", tokens.access_token);
+    client.global.set("refreshToken", tokens.refresh_token);
+    client.global.set("authRefreshToken", tokens.refresh_token);
+    client.global.set("onboardingAccessToken", tokens.access_token);
+%}
+
 ### Logout
 # @name logout
 POST {{baseUrl}}/auth/logout
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Content-Type: application/json
 Accept: application/json
 
 ### Change Password
 POST {{baseUrl}}/auth/change-password
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Content-Type: application/json
 Accept: application/json
 
@@ -116,9 +168,12 @@ Accept: application/json
   "new_password": "NewPassword456!"
 }
 
-### --- Extracted Tokens ---
-# Run Login or Verify Onboarding first (they are named # @name login / # @name verifyOnboarding).
-# These variables are resolved lazily — REST Client will look up the last response from the named request.
-@accessToken = {{login.response.body.data.tokens.access_token}}
-@refreshToken = {{login.response.body.data.tokens.refresh_token}}
-@onboardingAccessToken = {{verifyOnboarding.response.body.data.tokens.access_token}}
+### --- Parsed Tokens ---
+# Run Login, Google Login, or Verify Onboarding first.
+# Tokens are stored globally by the response handlers above and reused as:
+# Authorization: Bearer {{authAccessToken}}
+#
+# Previous lazy request variables kept for reference:
+# @accessToken = {{login.response.body.data.tokens.access_token}}
+# @refreshToken = {{login.response.body.data.tokens.refresh_token}}
+# @onboardingAccessToken = {{verifyOnboarding.response.body.data.tokens.access_token}}

@@ -1,10 +1,41 @@
 @baseUrl = http://localhost:8080/api/v1
+@authPhone = +2347015332038
+@authPassword = NewPassword123!
 @emergencyContactPhone = +23490801033
+
+
+### Auth - Login And Store Tokens
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "phone": "{{authPhone}}",
+  "password": "{{authPassword}}"
+}
+
+> {%
+    let body = response.body || {};
+    if (typeof body === "string") {
+        body = JSON.parse(body);
+    }
+
+    const tokens = body.data && body.data.tokens ? body.data.tokens : null;
+    if (!tokens || !tokens.access_token || !tokens.refresh_token) {
+        throw new Error("Expected login response tokens at data.tokens.access_token and data.tokens.refresh_token");
+    }
+
+    client.global.set("accessToken", tokens.access_token);
+    client.global.set("authAccessToken", tokens.access_token);
+    client.global.set("refreshToken", tokens.refresh_token);
+    client.global.set("authRefreshToken", tokens.refresh_token);
+%}
 
 
 ### Add Emergency Contact
 POST {{baseUrl}}/emergency-contacts/
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{authAccessToken}}
 Content-Type: application/json
 Accept: application/json
 
