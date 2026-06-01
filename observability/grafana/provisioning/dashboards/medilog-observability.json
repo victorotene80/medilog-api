@@ -1,7 +1,7 @@
 {
   "uid": "medilog-observability",
   "title": "Medilog Observability",
-  "tags": ["medilog", "loki", "prometheus", "tempo"],
+  "tags": ["medilog", "prometheus"],
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 2,
@@ -13,17 +13,17 @@
   "panels": [
     {
       "id": 1,
-      "title": "Prometheus Target Health",
+      "title": "Prometheus Targets UP",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "up",
-          "legendFormat": "{{job}}"
+          "expr": "count(up == 1)",
+          "legendFormat": "Targets UP"
         }
       ],
-      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 0 },
       "options": {
         "reduceOptions": {
           "values": false,
@@ -39,242 +39,129 @@
     },
     {
       "id": 2,
-      "title": "Collector Accepted Spans/sec",
+      "title": "API Response Time (p95)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(otelcol_receiver_accepted_spans_total[5m])",
-          "legendFormat": "{{receiver}}"
+          "expr": "histogram_quantile(0.95, rate(medilog_http_request_duration_seconds_bucket[5m]))",
+          "legendFormat": "{{method}} {{route}}"
         }
       ],
-      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 }
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 0 }
     },
     {
       "id": 3,
-      "title": "OTEL Logs Received by Collector",
+      "title": "API Request Rate (by Status)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(otelcol_receiver_accepted_log_records_total[5m])",
-          "legendFormat": "{{receiver}}"
+          "expr": "sum(rate(medilog_http_request_duration_seconds_count[5m])) by (status)",
+          "legendFormat": "{{status}}"
         }
       ],
-      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 }
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 6 }
     },
     {
       "id": 4,
-      "title": "Collector Sent Spans/sec",
+      "title": "API Request Count (by Route)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(otelcol_exporter_sent_spans_total[5m])",
-          "legendFormat": "{{exporter}}"
+          "expr": "sum(increase(medilog_http_request_duration_seconds_count[5m])) by (route)",
+          "legendFormat": "{{route}}"
         }
       ],
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 6 }
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 6 }
     },
     {
       "id": 5,
-      "title": "OTEL Logs Sent to Loki",
+      "title": "Database Query Duration (p95)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(otelcol_exporter_sent_log_records_total[5m])",
-          "legendFormat": "{{exporter}}"
+          "expr": "histogram_quantile(0.95, rate(medilog_gorm_query_duration_seconds_bucket[5m]))",
+          "legendFormat": "{{operation}} {{table}}"
         }
       ],
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 6 }
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 12 }
     },
     {
       "id": 6,
-      "title": "Log Volume by Service",
+      "title": "Database Operations by Table",
       "type": "timeseries",
-      "datasource": { "type": "loki", "uid": "loki" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (service) (count_over_time({environment=\"local\"}[5m]))"
+          "expr": "sum(increase(medilog_gorm_query_duration_seconds_count[5m])) by (table, operation)",
+          "legendFormat": "{{table}} ({{operation}})"
         }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 }
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 12 }
     },
     {
       "id": 7,
-      "title": "Error Logs by Service",
+      "title": "Go Goroutines",
       "type": "timeseries",
-      "datasource": { "type": "loki", "uid": "loki" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (service) (count_over_time({environment=\"local\"} |~ \"(?i)error|fatal|panic|failed|exception\" [5m]))"
+          "expr": "go_goroutines",
+          "legendFormat": "Goroutines"
         }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 }
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 18 }
     },
     {
       "id": 8,
-      "title": "Recent Docker Service Logs",
-      "type": "logs",
-      "datasource": { "type": "loki", "uid": "loki" },
+      "title": "Memory Usage (MB)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "{environment=\"local\"}"
+          "expr": "go_memstats_alloc_bytes / 1024 / 1024",
+          "legendFormat": "Heap Alloc"
         }
       ],
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 21 },
-      "options": {
-        "showTime": true,
-        "showLabels": true,
-        "showCommonLabels": false,
-        "wrapLogMessage": true,
-        "prettifyLogMessage": false,
-        "enableLogDetails": true,
-        "dedupStrategy": "none",
-        "sortOrder": "Descending"
-      }
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 18 }
     },
     {
       "id": 9,
-      "title": "Medilog API Traces",
-      "type": "table",
-      "datasource": { "type": "tempo", "uid": "tempo" },
+      "title": "Prometheus Scrape Duration (ms)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "refId": "A",
-          "queryType": "traceql",
-          "query": "{ resource.service.name = \"medilog-api\" }"
+          "expr": "scrape_duration_seconds * 1000",
+          "legendFormat": "{{job}}"
         }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 31 }
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 24 }
     },
     {
       "id": 10,
-      "title": "Slow Medilog API Traces",
-      "type": "table",
-      "datasource": { "type": "tempo", "uid": "tempo" },
-      "targets": [
-        {
-          "refId": "A",
-          "queryType": "traceql",
-          "query": "{ resource.service.name = \"medilog-api\" && duration > 100ms }"
-        }
-      ],
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 31 }
-    },
-    {
-      "id": 11,
-      "title": "Top Noisy Services",
-      "type": "bargauge",
-      "datasource": { "type": "loki", "uid": "loki" },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "topk(5, sum by (service) (count_over_time({environment=\"local\"}[5m])))"
-        }
-      ],
-      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 39 },
-      "options": {
-        "orientation": "horizontal",
-        "displayMode": "gradient",
-        "showUnfilled": true
-      }
-    },
-    {
-      "id": 12,
-      "title": "Loki Error Logs",
-      "type": "logs",
-      "datasource": { "type": "loki", "uid": "loki" },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "{environment=\"local\"} |~ \"(?i)error|fatal|panic|failed|exception\""
-        }
-      ],
-      "gridPos": { "h": 7, "w": 16, "x": 8, "y": 39 },
-      "options": {
-        "showTime": true,
-        "showLabels": true,
-        "showCommonLabels": false,
-        "wrapLogMessage": true,
-        "prettifyLogMessage": false,
-        "enableLogDetails": true,
-        "dedupStrategy": "none",
-        "sortOrder": "Descending"
-      }
-    },
-    {
-      "id": 13,
-      "title": "API Trace Rate",
+      "title": "API Requests by Method",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(otelcol_receiver_accepted_spans_total{receiver=\"otlp\"}[5m]))",
-          "legendFormat": "api traces/sec"
+          "expr": "sum(increase(medilog_http_request_duration_seconds_count[5m])) by (method)",
+          "legendFormat": "{{method}}"
         }
       ],
-      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 46 }
-    },
-    {
-      "id": 14,
-      "title": "Tempo Export Failures",
-      "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "rate(otelcol_exporter_send_failed_spans_total[5m])",
-          "legendFormat": "{{exporter}}"
-        }
-      ],
-      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 46 }
-    },
-    {
-      "id": 15,
-      "title": "Loki Export Failures",
-      "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "rate(otelcol_exporter_send_failed_log_records_total[5m])",
-          "legendFormat": "{{exporter}}"
-        }
-      ],
-      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 46 }
-    },
-    {
-      "id": 16,
-      "title": "Medilog API OTEL Logs",
-      "type": "logs",
-      "datasource": { "type": "loki", "uid": "loki" },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "{service_name=\"medilog-api\"}"
-        }
-      ],
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 53 },
-      "options": {
-        "showTime": true,
-        "showLabels": true,
-        "showCommonLabels": false,
-        "wrapLogMessage": true,
-        "prettifyLogMessage": true,
-        "enableLogDetails": true,
-        "dedupStrategy": "none",
-        "sortOrder": "Descending"
-      }
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 24 }
     }
   ]
 }
