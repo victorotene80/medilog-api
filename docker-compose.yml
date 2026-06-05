@@ -21,7 +21,9 @@ services:
     ports:
       # From your Mac: localhost:5433
       # From Docker containers: postgres:5432
-      - "5433:5432"
+      # Previous public server binding:
+      # - "5433:5432"
+      - "127.0.0.1:5433:5432"
     environment:
       POSTGRES_USER: ${DB_USER:-medilog}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-medilog}
@@ -39,7 +41,9 @@ services:
     container_name: medilog_redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      # Previous public server binding:
+      # - "6379:6379"
+      - "127.0.0.1:6379:6379"
     # Previous default kept Redis uncapped:
     # command: redis-server --requirepass ${REDIS_PASSWORD:-redis}
     mem_limit: "${REDIS_MEMORY_LIMIT:-512m}"
@@ -123,7 +127,9 @@ services:
     hostname: medilog-local
     mem_limit: "${NETDATA_MEMORY_LIMIT:-256m}"
     ports:
-      - "19999:19999"
+      # Previous public server binding:
+      # - "19999:19999"
+      - "127.0.0.1:19999:19999"
     environment:
       DOCKER_HOST: unix:///var/run/docker.sock
     volumes:
@@ -191,7 +197,9 @@ services:
         max-size: "10m"
         max-file: "3"
     ports:
-      - "8080:8080"
+      # Previous public server binding:
+      # - "8080:8080"
+      - "127.0.0.1:8080:8080"
     env_file:
       - .env
     environment:

@@ -128,13 +128,13 @@ func (rt *Router) Setup() http.Handler {
 			r.With(rt.limit(
 				appmw.RateLimitRule{
 					Name:      "auth_register_ip",
-					Limit:     5,
+					Limit:     30,
 					Window:    time.Hour,
 					KeyFields: []string{"ip"},
 				},
 				appmw.RateLimitRule{
 					Name:       "auth_register_identity",
-					Limit:      3,
+					Limit:      10,
 					Window:     time.Hour,
 					KeyFields:  []string{"ip"},
 					BodyFields: []string{"email", "phone"},

@@ -122,7 +122,7 @@ Rate limiting is configured for auth and OTP routes:
 
 | Endpoint | Limit |
 | --- | --- |
-| `POST /api/v1/auth/register` | 5 per IP per hour, and 3 per IP plus email/phone per hour |
+| `POST /api/v1/auth/register` | 30 per IP per hour, and 10 per IP plus email/phone per hour |
 | `POST /api/v1/auth/login` | 5 per IP plus device plus email/phone per 10 minutes |
 | `POST /api/v1/auth/google` | 10 per IP plus device per 10 minutes |
 | `POST /api/v1/auth/forgot-password` | 3 per IP plus recipient per 10 minutes |
