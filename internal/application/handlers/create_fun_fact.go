@@ -2,11 +2,11 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
 	"github.com/victorotene80/medilog-api/internal/domain/repository"
@@ -26,11 +26,11 @@ func (h *CreateFunFactHandler) Handle(
 	cmd command.CreateFunFactCommand,
 ) (struct{}, error) {
 	if strings.TrimSpace(cmd.Text) == "" {
-		return struct{}{}, errors.New("fun fact text is required")
+		return struct{}{}, application.NewValidation("fun fact text is required")
 	}
 	title := strings.TrimSpace(cmd.Title)
 	if title == "" {
-		return struct{}{}, errors.New("fun fact title is required")
+		return struct{}{}, application.NewValidation("fun fact title is required")
 	}
 
 	if err := validateFunFactRanges(cmd.TargetAgeMin, cmd.TargetAgeMax, cmd.AllergyCategory); err != nil {
@@ -67,15 +67,15 @@ func validateFunFactRanges(
 	allergyCategory *int,
 ) error {
 	if minAge != nil && *minAge < 0 {
-		return errors.New("target_age_min cannot be negative")
+		return application.NewValidation("target_age_min cannot be negative")
 	}
 
 	if maxAge != nil && *maxAge < 0 {
-		return errors.New("target_age_max cannot be negative")
+		return application.NewValidation("target_age_max cannot be negative")
 	}
 
 	if minAge != nil && maxAge != nil && *minAge > *maxAge {
-		return errors.New("target_age_min cannot be greater than target_age_max")
+		return application.NewValidation("target_age_min cannot be greater than target_age_max")
 	}
 
 	if allergyCategory != nil {

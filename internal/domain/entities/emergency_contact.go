@@ -9,6 +9,7 @@ type EmergencyContact struct {
 	Name         string
 	Relationship string
 	Phone        string
+	CountryCode  string
 	IsPrimary    bool
 	CreatedAt    time.Time
 	UpdatedAt    time.Time

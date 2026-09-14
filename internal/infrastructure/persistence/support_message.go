@@ -18,7 +18,7 @@ func NewSupportMessageRepository(db *gorm.DB) *SupportMessageRepository {
 
 func (r *SupportMessageRepository) FindByTicketID(ctx context.Context, ticketID int64) ([]*entities.SupportMessage, error) {
 	var ms []models.SupportMessageModel
-	if err := r.db.WithContext(ctx).Where("ticket_id = ?", ticketID).Order("created_at ASC").Find(&ms).Error; err != nil {
+	if err := conn(ctx, r.db).Where("ticket_id = ?", ticketID).Order("created_at ASC").Find(&ms).Error; err != nil {
 		return nil, err
 	}
 	result := make([]*entities.SupportMessage, len(ms))
@@ -31,7 +31,7 @@ func (r *SupportMessageRepository) FindByTicketID(ctx context.Context, ticketID 
 
 func (r *SupportMessageRepository) Save(ctx context.Context, msg *entities.SupportMessage) error {
 	m := models.SupportMessageToModel(msg)
-	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
+	if err := conn(ctx, r.db).Create(m).Error; err != nil {
 		return err
 	}
 	msg.ID = m.ID

@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"strings"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	"github.com/victorotene80/medilog-api/internal/domain/repository"
 )
@@ -24,10 +24,10 @@ func (h *DeleteUserAllergyHandler) Handle(
 	cmd command.DeleteUserAllergyCommand,
 ) (struct{}, error) {
 	if cmd.UserID <= 0 {
-		return struct{}{}, errors.New("user id is required")
+		return struct{}{}, application.NewValidation("user id is required")
 	}
 	if strings.TrimSpace(cmd.PublicID) == "" {
-		return struct{}{}, errors.New("allergy public id is required")
+		return struct{}{}, application.NewValidation("allergy public id is required")
 	}
 
 	if err := h.userAllergyRepository.DeleteByPublicID(ctx, cmd.UserID, cmd.PublicID); err != nil {

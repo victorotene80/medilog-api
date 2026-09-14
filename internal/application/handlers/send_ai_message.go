@@ -1,12 +1,15 @@
 package handlers
 
 import (
+	clockpkg "github.com/victorotene80/medilog-api/internal/shared/clock"
+
 	"context"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
 	"github.com/victorotene80/medilog-api/internal/application/mapper"
@@ -20,6 +23,7 @@ import (
 type SendAIMessageHandler struct {
 	conversations         domainRepo.AIConversationRepository
 	messages              domainRepo.AIMessageRepository
+	profiles              domainRepo.UserProfileRepository
 	contextBuilder        *appServices.AIContextBuilder
 	ai                    *appServices.AIService
 	clock                 func() time.Time
@@ -31,6 +35,7 @@ type SendAIMessageHandler struct {
 func NewSendAIMessageHandler(
 	conversations domainRepo.AIConversationRepository,
 	messages domainRepo.AIMessageRepository,
+	profiles domainRepo.UserProfileRepository,
 	contextBuilder *appServices.AIContextBuilder,
 	ai *appServices.AIService,
 	clock func() time.Time,
@@ -39,12 +44,13 @@ func NewSendAIMessageHandler(
 	summaryTokenThreshold int,
 ) *SendAIMessageHandler {
 	if clock == nil {
-		clock = func() time.Time { return time.Now().UTC() }
+		clock = clockpkg.Default()
 	}
 
 	return &SendAIMessageHandler{
 		conversations:         conversations,
 		messages:              messages,
+		profiles:              profiles,
 		contextBuilder:        contextBuilder,
 		ai:                    ai,
 		clock:                 clock,
@@ -60,7 +66,7 @@ func (h *SendAIMessageHandler) Handle(
 ) (*dto.SendAIMessageResultDTO, error) {
 	content := strings.TrimSpace(cmd.Message)
 	if content == "" {
-		return nil, errors.New("message is required")
+		return nil, application.NewValidation("message is required")
 	}
 	if h.contextBuilder == nil {
 		return nil, errors.New("ai context builder is not configured")
@@ -74,7 +80,28 @@ func (h *SendAIMessageHandler) Handle(
 		return nil, fmt.Errorf("find ai conversation: %w", err)
 	}
 	if agg == nil {
-		return nil, errors.New("conversation not found")
+		return nil, application.NewNotFound("conversation not found")
+	}
+
+	profile, err := h.profiles.FindByUserID(ctx, cmd.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("find user profile: %w", err)
+	}
+	if profile == nil {
+		return nil, application.NewNotFound("user profile not found")
+	}
+	// Lazy daily reset: persist immediately so the fresh window survives even if
+	// the AI call below fails.
+	if profile.EnsureDailyWindow(h.clock()) {
+		if err := h.profiles.Update(ctx, profile); err != nil {
+			return nil, fmt.Errorf("reset ai quota window: %w", err)
+		}
+	}
+
+	// Cheap pre-check so an exhausted user never pays for an AI round-trip. The
+	// authoritative check is the atomic decrement after the reply is stored.
+	if !profile.HasAIQuotaRemaining() {
+		return nil, application.NewQuotaExceeded("AI quota exhausted")
 	}
 
 	patientContext, err := h.contextBuilder.Build(ctx, cmd.UserID)
@@ -138,6 +165,22 @@ func (h *SendAIMessageHandler) Handle(
 		return nil, fmt.Errorf("save assistant ai message: %w", err)
 	}
 
+	// Authoritative, race-free decrement. The pre-check above only avoids paying
+	// for an AI call we know will be rejected.
+	consumed, err := h.profiles.ConsumeAIQuestion(ctx, cmd.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("consume ai question: %w", err)
+	}
+	if !consumed {
+		return nil, application.NewQuotaExceeded("AI quota exhausted")
+	}
+
+	// Keep the in-memory copy in step so the quota returned in this response
+	// reflects the question just spent.
+	if !profile.AIIsPro {
+		profile.AIQuestionsUsed++
+	}
+
 	if agg.Conversation.Title == nil {
 		agg.SetTitle(titleFromMessage(content), now)
 	}
@@ -156,6 +199,7 @@ func (h *SendAIMessageHandler) Handle(
 		PromptTokens: chatResp.PromptTokens,
 		OutputTokens: chatResp.OutputTokens,
 		ContextMeta:  patientContext.Meta,
+		Quota:        AIQuotaToDTO(profile, now),
 	}, nil
 }
 

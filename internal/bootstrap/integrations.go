@@ -5,11 +5,13 @@ import (
 
 	"github.com/victorotene80/medilog-api/internal/application/contracts"
 	aiinfra "github.com/victorotene80/medilog-api/internal/infrastructure/services/ai"
+	"github.com/victorotene80/medilog-api/internal/infrastructure/services/bulksms"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/services/claude"
 	googleauth "github.com/victorotene80/medilog-api/internal/infrastructure/services/google"
 	httpclient "github.com/victorotene80/medilog-api/internal/infrastructure/services/http"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/services/sms"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/services/telnyx"
+	"github.com/victorotene80/medilog-api/internal/infrastructure/services/twilio"
 	"github.com/victorotene80/medilog-api/internal/shared/config"
 )
 
@@ -50,7 +52,7 @@ func buildAIModelService(cfg *config.Config, httpService httpclient.HTTPService)
 
 func buildSMSSender(cfg *config.Config, httpService httpclient.HTTPService) contracts.SMSSender {
 	if !cfg.SMS.Enabled {
-		return sms.NewNoopSender()
+		return sms.NewUnavailableSender("SMS is disabled (SMS_ENABLED=false)")
 	}
 
 	var providers []contracts.SMSSender
@@ -60,41 +62,25 @@ func buildSMSSender(cfg *config.Config, httpService httpclient.HTTPService) cont
 		providers = append(providers, telnyx.NewSenderAdapter(telnyxService))
 	}
 
-	//if strings.TrimSpace(cfg.Twilio.AccountSID) != "" &&
-	//	strings.TrimSpace(cfg.Twilio.AuthToken) != "" {
-	//	twilioService := twilio.NewDefaultTwilioService(cfg.Twilio, httpService)
-	//	providers = append(providers, twilio.NewSenderAdapter(twilioService))
-	//}
+	if strings.TrimSpace(cfg.Twilio.AccountSID) != "" &&
+		strings.TrimSpace(cfg.Twilio.AuthToken) != "" {
+		twilioService := twilio.NewDefaultTwilioService(cfg.Twilio, httpService)
+		providers = append(providers, twilio.NewSenderAdapter(twilioService))
+	}
 
-	//if strings.TrimSpace(cfg.BulkSms.APIToken) != "" {
-	//	bulkSMSService := bulksms.NewDefaultMessagingService(cfg.BulkSms, httpService)
-	//	providers = append(providers, bulksms.NewSenderAdapter(bulkSMSService, *cfg))
-	//}
+	if strings.TrimSpace(cfg.BulkSms.APIToken) != "" {
+		bulkSMSService := bulksms.NewDefaultMessagingService(cfg.BulkSms, httpService)
+		providers = append(providers, bulksms.NewSenderAdapter(bulkSMSService, *cfg))
+	}
 
 	if len(providers) == 0 {
-		return sms.NewNoopSender()
+		// SMS was switched on but no provider has credentials. Failing here is the
+		// point: this is the misconfiguration most likely to reach production, and
+		// it previously presented as every OTP succeeding.
+		return sms.NewUnavailableSender(
+			"SMS_ENABLED=true but no provider is configured (set Telnyx, Twilio or BulkSMS credentials)",
+		)
 	}
 
 	return sms.NewChainSender(providers...)
 }
-
-/*
-func buildSMSSender(cfg *config.Config, httpService httpclient.HTTPService) contracts.SMSSender {
-	if !cfg.SMS.Enabled {
-		return sms.NewNoopSender()
-	}
-
-	bulkSMSService := bulksms.NewDefaultMessagingService(cfg.BulkSms, httpService)
-	bulkSMSSender := bulksms.NewSenderAdapter(bulkSMSService, *cfg)
-
-	twilioService := twilio.NewDefaultTwilioService(cfg.Twilio, httpService)
-	twilioSender := twilio.NewSenderAdapter(twilioService)
-
-	maxFailures := cfg.SMS.MaxBulkFailures
-	if maxFailures <= 0 {
-		maxFailures = 3
-	}
-
-	return services.NewRoutedSMSSender(bulkSMSSender, twilioSender, maxFailures)
-}
-*/

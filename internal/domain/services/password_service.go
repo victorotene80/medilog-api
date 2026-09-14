@@ -19,6 +19,9 @@ func (s *PasswordService) Validate(password string) error {
 	if len(password) < s.policy.MinLength {
 		return domain.ErrPasswordTooShort
 	}
+	if s.policy.MaxLength > 0 && len(password) > s.policy.MaxLength {
+		return domain.ErrPasswordTooLong
+	}
 	if s.policy.RequireUppercase && !containsUppercase(password) {
 		return domain.ErrPasswordMissingUppercase
 	}

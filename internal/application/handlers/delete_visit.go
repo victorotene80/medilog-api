@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	domainRepo "github.com/victorotene80/medilog-api/internal/domain/repository"
 )
@@ -23,7 +23,7 @@ func (h *DeleteVisitHandler) Handle(ctx context.Context, cmd command.DeleteVisit
 		return struct{}{}, fmt.Errorf("find visit: %w", err)
 	}
 	if visit == nil {
-		return struct{}{}, errors.New("visit not found")
+		return struct{}{}, application.NewNotFound("visit not found")
 	}
 
 	if err := h.visits.Delete(ctx, visit.ID); err != nil {

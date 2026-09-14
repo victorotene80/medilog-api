@@ -24,6 +24,7 @@ type UserAllergy struct {
 	Severity    *valueobjects.AllergySeverity
 	Category    valueobjects.AllergyCategory
 	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 func (a *UserAllergy) IsCustom() bool {

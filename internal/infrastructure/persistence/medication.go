@@ -3,25 +3,32 @@ package persistence
 import (
 	"context"
 	"errors"
+	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/aggregates"
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence/models"
 	"gorm.io/gorm"
 )
 
+var _ repository.MedicationRepository = (*MedicationRepository)(nil)
+
 type MedicationRepository struct {
 	db *gorm.DB
+	// events drains the aggregate's domain events into the outbox on the same
+	// transaction as the write. See drainAggregateEvents.
+	events appContracts.MessagePublisher
 }
 
-func NewMedicationRepository(db *gorm.DB) *MedicationRepository {
-	return &MedicationRepository{db: db}
+func NewMedicationRepository(db *gorm.DB, events appContracts.MessagePublisher) *MedicationRepository {
+	return &MedicationRepository{db: db, events: events}
 }
 
 func (r *MedicationRepository) FindByID(ctx context.Context, id int64) (*aggregates.MedicationAggregate, error) {
 	var m models.MedicationModel
-	if err := r.db.WithContext(ctx).First(&m, id).Error; err != nil {
+	if err := conn(ctx, r.db).Where("deleted_at IS NULL").First(&m, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -32,7 +39,7 @@ func (r *MedicationRepository) FindByID(ctx context.Context, id int64) (*aggrega
 
 func (r *MedicationRepository) FindByUserID(ctx context.Context, userID int64) ([]*aggregates.MedicationAggregate, error) {
 	var ms []models.MedicationModel
-	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&ms).Error; err != nil {
+	if err := conn(ctx, r.db).Where("deleted_at IS NULL").Where("user_id = ?", userID).Find(&ms).Error; err != nil {
 		return nil, err
 	}
 	return r.hydrateAll(ctx, ms)
@@ -40,8 +47,14 @@ func (r *MedicationRepository) FindByUserID(ctx context.Context, userID int64) (
 
 func (r *MedicationRepository) FindActiveByUserID(ctx context.Context, userID int64, now time.Time) ([]*aggregates.MedicationAggregate, error) {
 	var ms []models.MedicationModel
-	if err := r.db.WithContext(ctx).
-		Where("user_id = ? AND is_completed = false AND (end_date IS NULL OR end_date > ?)", userID, now).
+	if err := conn(ctx, r.db).
+		Where("deleted_at IS NULL").
+		Where(
+			"user_id = ? AND is_completed = false"+
+				" AND (start_date IS NULL OR start_date <= ?)"+
+				" AND (end_date IS NULL OR end_date > ?)",
+			userID, now, now,
+		).
 		Find(&ms).Error; err != nil {
 		return nil, err
 	}
@@ -49,7 +62,7 @@ func (r *MedicationRepository) FindActiveByUserID(ctx context.Context, userID in
 }
 
 func (r *MedicationRepository) Save(ctx context.Context, agg *aggregates.MedicationAggregate) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return conn(ctx, r.db).Transaction(func(tx *gorm.DB) error {
 		medModel := models.MedicationToModel(agg.Medication)
 		if err := tx.Create(medModel).Error; err != nil {
 			return err
@@ -64,7 +77,9 @@ func (r *MedicationRepository) Save(ctx context.Context, agg *aggregates.Medicat
 			}
 			t.ID = timeModel.ID
 		}
-		return nil
+		// Drained here, on the same transaction as the write: leaving it to the
+		// caller meant most mutations raised events that were silently discarded.
+		return drainAggregateEvents(ctx, tx, r.events, agg)
 	})
 }
 
@@ -77,19 +92,26 @@ func (r *MedicationRepository) Update(ctx context.Context, agg *aggregates.Medic
 	}
 
 	model := models.MedicationToModel(agg.Medication)
-	result := r.db.WithContext(ctx).
-		Model(&models.MedicationModel{}).
-		Where("id = ?", agg.Medication.ID).
-		Select("*").
-		Omit("id", "public_id", "created_at", "deleted_at").
-		Updates(model)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
+	// Wrapped in a transaction so the outbox envelope commits with the row it
+	// describes; a bare Updates cannot carry the drain.
+	return conn(ctx, r.db).Transaction(func(tx *gorm.DB) error {
+		result := tx.
+			Model(&models.MedicationModel{}).
+			Where("id = ?", agg.Medication.ID).
+			Select("*").
+			Omit("id", "public_id", "created_at", "deleted_at").
+			Updates(model)
+
+		if result.Error != nil {
+			return result.Error
+		}
+
+		if result.RowsAffected == 0 {
+			return repository.ErrNotFound
+		}
+
+		return drainAggregateEvents(ctx, tx, r.events, agg)
+	})
 }
 
 func (r *MedicationRepository) Delete(ctx context.Context, id int64) error {
@@ -97,23 +119,25 @@ func (r *MedicationRepository) Delete(ctx context.Context, id int64) error {
 		return errors.New("medication id is required")
 	}
 
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("medication_id = ?", id).
-			Delete(&models.MedicationAdherenceLogModel{}).Error; err != nil {
+	return conn(ctx, r.db).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.MedicationAdherenceLogModel{}).
+			Where("medication_id = ?", id).
+			Updates(map[string]any{"deleted_at": time.Now()}).Error; err != nil {
 			return err
 		}
 
-		if err := tx.Where("medication_id = ?", id).
-			Delete(&models.MedicationTimeModel{}).Error; err != nil {
+		if err := tx.Model(&models.MedicationTimeModel{}).
+			Where("medication_id = ?", id).
+			Updates(map[string]any{"deleted_at": time.Now()}).Error; err != nil {
 			return err
 		}
 
-		result := tx.Delete(&models.MedicationModel{}, id)
+		result := tx.Model(&models.MedicationModel{}).Where("id = ?", id).Updates(map[string]any{"deleted_at": time.Now()})
 		if result.Error != nil {
 			return result.Error
 		}
 		if result.RowsAffected == 0 {
-			return gorm.ErrRecordNotFound
+			return repository.ErrNotFound
 		}
 		return nil
 	})
@@ -126,7 +150,11 @@ func (r *MedicationRepository) hydrate(ctx context.Context, m *models.Medication
 	}
 
 	var timeModels []models.MedicationTimeModel
-	r.db.WithContext(ctx).Where("medication_id = ?", m.ID).Find(&timeModels)
+	// Checked: dropping this error rendered a medication with no dose times as a
+	// complete 200, which on a reminder product reads as "no doses scheduled".
+	if err := conn(ctx, r.db).Where("medication_id = ?", m.ID).Find(&timeModels).Error; err != nil {
+		return nil, err
+	}
 	times := make([]*entities.MedicationTime, len(timeModels))
 	for i, t := range timeModels {
 		t := t
@@ -134,7 +162,9 @@ func (r *MedicationRepository) hydrate(ctx context.Context, m *models.Medication
 	}
 
 	var logModels []models.MedicationAdherenceLogModel
-	r.db.WithContext(ctx).Where("medication_id = ?", m.ID).Find(&logModels)
+	if err := conn(ctx, r.db).Where("medication_id = ?", m.ID).Find(&logModels).Error; err != nil {
+		return nil, err
+	}
 	logs := make([]*entities.MedicationAdherenceLog, 0, len(logModels))
 	for _, l := range logModels {
 		l := l
@@ -163,7 +193,7 @@ func (r *MedicationRepository) hydrateAll(ctx context.Context, ms []models.Medic
 
 func (r *MedicationRepository) FindByPublicID(ctx context.Context, userID int64, publicID string) (*aggregates.MedicationAggregate, error) {
 	var m models.MedicationModel
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("user_id = ? AND public_id = ?", userID, publicID).
 		First(&m).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

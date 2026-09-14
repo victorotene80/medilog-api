@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	domainRepo "github.com/victorotene80/medilog-api/internal/domain/repository"
 )
@@ -24,7 +24,7 @@ func (h *UpdateVisitHandler) Handle(ctx context.Context, cmd command.UpdateVisit
 		return struct{}{}, fmt.Errorf("find visit: %w", err)
 	}
 	if visit == nil {
-		return struct{}{}, errors.New("visit not found")
+		return struct{}{}, application.NewNotFound("visit not found")
 	}
 
 	visit.HospitalName = cmd.HospitalName

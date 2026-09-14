@@ -1,129 +1,52 @@
 package bootstrap
 
 import (
-	"go.uber.org/zap"
-
-	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
-	outboxPublisher "github.com/victorotene80/medilog-api/internal/infrastructure/messaging/outbox"
-)
-
-func initializeMessagePublisher(
-	p *Persistence,
-	logger *zap.Logger,
-) appContracts.MessagePublisher {
-	if p.OutboxRepo == nil {
-		logger.Fatal("outbox repository is nil — cannot initialize message publisher")
-	}
-	logger.Info("message publisher ready (outbox-backed)")
-	return outboxPublisher.NewPublisher(p.OutboxRepo)
-}
-
-/*import (
 	"context"
 
 	"go.uber.org/zap"
 
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
-	kafkaInfra "github.com/victorotene80/medilog-api/internal/infrastructure/messaging/kafka"
+	appmsg "github.com/victorotene80/medilog-api/internal/application/messaging"
+	"github.com/victorotene80/medilog-api/internal/domain/events"
+	outboxContracts "github.com/victorotene80/medilog-api/internal/infrastructure/messaging/outbox"
 	outboxPublisher "github.com/victorotene80/medilog-api/internal/infrastructure/messaging/outbox"
-	rabbitInfra "github.com/victorotene80/medilog-api/internal/infrastructure/messaging/rabbitmq"
-	"github.com/victorotene80/medilog-api/internal/infrastructure/messaging"
-	"github.com/victorotene80/medilog-api/internal/shared/config"
 )
 
-type Consumers struct {
-	EventConsumer messaging.MessageConsumer
-	TaskConsumer  messaging.MessageConsumer
-}
-
-func initializeMessagePublisher(
-	p *Persistence,
+// initializeMessagePublisher returns the outbox-backed publisher, or a no-op
+// when messaging is disabled.
+//
+// MESSAGING_ENABLED defaults to false, and the publisher used to be wired
+// regardless: every registration and login wrote an outbox_events row that no
+// relay was running to drain. The table grew monotonically, and switching
+// messaging on later would replay the entire accumulated history in batches —
+// months of user.created events delivered as though they had just happened.
+func newEventPublisher(
+	outboxRepo outboxContracts.OutboxRepository,
+	enabled bool,
 	logger *zap.Logger,
 ) appContracts.MessagePublisher {
-	if p.OutboxRepo == nil {
+	if !enabled {
+		logger.Info("messaging disabled — domain events are not recorded to the outbox")
+		return noopPublisher{}
+	}
+
+	if outboxRepo == nil {
 		logger.Fatal("outbox repository is nil — cannot initialize message publisher")
 	}
+
 	logger.Info("message publisher ready (outbox-backed)")
-	return outboxPublisher.NewPublisher(p.OutboxRepo)
+
+	return outboxPublisher.NewPublisher(outboxRepo)
 }
 
-func initializeMessaging(
-	p *Persistence,
-	cfg *config.Config,
-	logger *zap.Logger,
-) (Consumers, func()) {
+var _ appContracts.MessagePublisher = (*noopPublisher)(nil)
 
-	eventBroker := kafkaInfra.NewBroker(kafkaInfra.BrokerConfig{
-		Brokers:      cfg.Messaging.Kafka.Brokers,
-		TopicPrefix:  cfg.Messaging.Kafka.TopicPrefix,
-		WriteTimeout: cfg.Messaging.Kafka.WriteTimeout,
-	})
-	logger.Info("event broker ready (kafka)", zap.Strings("brokers", cfg.Messaging.Kafka.Brokers))
+type noopPublisher struct{}
 
-	taskBroker, err := rabbitInfra.NewBroker(rabbitInfra.BrokerConfig{
-		DSN:        cfg.Messaging.RabbitMQ.DSN,
-		Exchange:   cfg.Messaging.RabbitMQ.Exchange,
-		DLExchange: cfg.Messaging.RabbitMQ.DLExchange,
-	})
-	if err != nil {
-		logger.Fatal("failed to create task broker (rabbitmq)", zap.Error(err))
-	}
-	logger.Info("task broker ready (rabbitmq)", zap.String("exchange", cfg.Messaging.RabbitMQ.Exchange))
+func (noopPublisher) Publish(context.Context, []events.DomainEvent, map[string]string) error {
+	return nil
+}
 
-	r := messaging.New(
-		p.OutboxRepo,
-		messaging.Brokers{
-			EventBroker: eventBroker,
-			TaskBroker:  taskBroker,
-		},
-		messaging.Config{
-			PollInterval: cfg.Messaging.Relay.PollInterval,
-			BatchSize:    cfg.Messaging.Relay.BatchSize,
-			BrokerRoutes: cfg.Messaging.Relay.BrokerRoutes,
-		},
-		logger,
-	)
-	relayCtx, cancelRelay := context.WithCancel(context.Background())
-	go r.Run(relayCtx)
-
-	eventConsumer := kafkaInfra.NewConsumer(kafkaInfra.ConsumerConfig{
-		Brokers:     cfg.Messaging.Kafka.Brokers,
-		GroupID:     cfg.Messaging.Kafka.ConsumerGroupID,
-		TopicPrefix: cfg.Messaging.Kafka.TopicPrefix,
-	})
-
-	taskConsumer, err := rabbitInfra.NewConsumer(rabbitInfra.ConsumerConfig{
-		DSN:        cfg.Messaging.RabbitMQ.DSN,
-		Exchange:   cfg.Messaging.RabbitMQ.Exchange,
-		DLExchange: cfg.Messaging.RabbitMQ.DLExchange,
-		MaxRetries: cfg.Messaging.RabbitMQ.MaxRetries,
-		RetryDelay: cfg.Messaging.RabbitMQ.RetryDelay,
-	})
-	if err != nil {
-		logger.Fatal("failed to create task consumer (rabbitmq)", zap.Error(err))
-	}
-
-	consumers := Consumers{
-		EventConsumer: eventConsumer,
-		TaskConsumer:  taskConsumer,
-	}
-
-	stop := func() {
-		cancelRelay()
-		if err := eventBroker.Close(); err != nil {
-			logger.Error("error closing event broker", zap.Error(err))
-		}
-		if err := taskBroker.Close(); err != nil {
-			logger.Error("error closing task broker", zap.Error(err))
-		}
-		if err := eventConsumer.Close(); err != nil {
-			logger.Error("error closing event consumer", zap.Error(err))
-		}
-		if err := taskConsumer.Close(); err != nil {
-			logger.Error("error closing task consumer", zap.Error(err))
-		}
-		logger.Info("messaging shutdown complete")
-	}
-
-	return consumers, stop
-}*/
+func (noopPublisher) PublishEnvelope(context.Context, appmsg.Envelope) error {
+	return nil
+}

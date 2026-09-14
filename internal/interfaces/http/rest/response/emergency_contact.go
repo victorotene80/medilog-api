@@ -8,8 +8,13 @@ type EmergencyContactResponse struct {
 	Name         string    `json:"name"`
 	Relationship string    `json:"relationship"`
 	Phone        string    `json:"phone"`
-	Address      string    `json:"address"`
+	CountryCode  string    `json:"country_code"`
 	IsPrimary    bool      `json:"is_primary"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// ListEmergencyContactsResponse is the payload for GET /emergency-contacts.
+type ListEmergencyContactsResponse struct {
+	Contacts []EmergencyContactResponse `json:"contacts"`
 }

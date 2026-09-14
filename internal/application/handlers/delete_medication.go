@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	domainRepo "github.com/victorotene80/medilog-api/internal/domain/repository"
 )
@@ -23,7 +23,7 @@ func (h *DeleteMedicationHandler) Handle(ctx context.Context, cmd command.Delete
 		return struct{}{}, fmt.Errorf("find medication: %w", err)
 	}
 	if agg == nil {
-		return struct{}{}, errors.New("medication not found")
+		return struct{}{}, application.NewNotFound("medication not found")
 	}
 
 	if err := h.medications.Delete(ctx, agg.Medication.ID); err != nil {

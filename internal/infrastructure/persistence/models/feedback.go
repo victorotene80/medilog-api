@@ -4,20 +4,22 @@ import (
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"gorm.io/gorm"
 )
 
 type FeedbackModel struct {
-	ID          int64     `gorm:"column:id;primaryKey;autoIncrement"`
-	PublicID    string    `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
-	UserID      *int64    `gorm:"column:user_id"`
-	Rating      *int      `gorm:"column:rating"`
-	Title       *string   `gorm:"column:title"`
-	Message     string    `gorm:"column:message;not null"`
-	AppVersion  *string   `gorm:"column:app_version"`
-	Platform    *string   `gorm:"column:platform"`
-	DeviceModel *string   `gorm:"column:device_model"`
-	Status      string    `gorm:"column:status;not null;default:open"`
-	CreatedAt   time.Time `gorm:"column:created_at;autoCreateTime"`
+	ID          int64          `gorm:"column:id;primaryKey;autoIncrement"`
+	PublicID    string         `gorm:"column:public_id;type:uuid;default:gen_random_uuid()"`
+	UserID      *int64         `gorm:"column:user_id"`
+	Rating      *int           `gorm:"column:rating"`
+	Title       *string        `gorm:"column:title"`
+	Message     string         `gorm:"column:message;not null"`
+	AppVersion  *string        `gorm:"column:app_version"`
+	Platform    *string        `gorm:"column:platform"`
+	DeviceModel *string        `gorm:"column:device_model"`
+	Status      string         `gorm:"column:status;not null;default:open"`
+	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;index"`
+	CreatedAt   time.Time      `gorm:"column:created_at;autoCreateTime"`
 }
 
 func (FeedbackModel) TableName() string { return "feedback" }

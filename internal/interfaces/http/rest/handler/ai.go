@@ -3,8 +3,6 @@ package handler
 import (
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
@@ -28,6 +26,48 @@ func NewAIHandler(
 	return &AIHandler{commandBus: commandBus, validator: validator}
 }
 
+// GetQuota godoc
+//
+//	@Summary     Get the caller's AI question quota
+//	@Description Returns how many AI questions the user has used and has left,
+//	             and when the daily window next resets. The window is reset
+//	             lazily on read, so this endpoint is always current.
+//	@Tags        AI Conversations
+//	@Produce     json
+//	@Security    BearerAuth
+//	@Success     200 {object} response.APIResponse[response.AIQuotaResponse]
+//	@Failure     401 {object} response.APIResponse[response.EmptyData]
+//	@Failure     404 {object} response.APIResponse[response.EmptyData]
+//	@Router      /ai/quota [get]
+func (h *AIHandler) GetQuota(w http.ResponseWriter, r *http.Request) {
+	userID, ok := RequireUserID(w, r)
+	if !ok {
+		return
+	}
+
+	result, err := messaging.Execute[query.GetAIQuotaQuery, *dto.AIQuotaDTO](
+		h.commandBus, r.Context(), query.GetAIQuotaQuery{UserID: userID},
+	)
+	if err != nil {
+		logAndRespond(
+			w,
+			httperr.StatusFrom(err),
+			"AI_QUOTA_FETCH_FAILED",
+			"Could not retrieve AI quota",
+			err,
+		)
+		return
+	}
+
+	if result == nil {
+		response.Error(w, http.StatusNotFound, "USER_PROFILE_NOT_FOUND", "User profile not found", nil)
+		return
+	}
+
+	resp := mapper.AIQuotaDTOToResponse(*result)
+	response.Success(w, http.StatusOK, "AI_QUOTA_FETCHED", "AI quota retrieved", &resp)
+}
+
 // CreateConversation godoc
 //
 //	@Summary     Create AI conversation
@@ -38,13 +78,12 @@ func NewAIHandler(
 //	@Security    BearerAuth
 //	@Param       body body request.CreateAIConversationRequest true "AI conversation payload"
 //	@Success     201 {object} response.APIResponse[response.AIConversationResponse]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     401 {object} response.APIResponse[struct{}]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     401 {object} response.APIResponse[response.EmptyData]
 //	@Router      /ai/conversations/ [post]
 func (h *AIHandler) CreateConversation(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
@@ -66,7 +105,7 @@ func (h *AIHandler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 		cmd,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "AI_CONVERSATION_CREATE_FAILED", "Could not create AI conversation", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "AI_CONVERSATION_CREATE_FAILED", "Could not create AI conversation", err)
 		return
 	}
 
@@ -83,12 +122,11 @@ func (h *AIHandler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 //	@Security    BearerAuth
 //	@Param       active_only query bool false "Return only active conversations"
 //	@Success     200 {object} response.APIResponse[[]response.AIConversationResponse]
-//	@Failure     401 {object} response.APIResponse[struct{}]
+//	@Failure     401 {object} response.APIResponse[response.EmptyData]
 //	@Router      /ai/conversations/ [get]
 func (h *AIHandler) ListConversations(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
@@ -103,7 +141,7 @@ func (h *AIHandler) ListConversations(w http.ResponseWriter, r *http.Request) {
 		q,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "AI_CONVERSATIONS_FETCH_FAILED", "Could not fetch AI conversations", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "AI_CONVERSATIONS_FETCH_FAILED", "Could not fetch AI conversations", err)
 		return
 	}
 
@@ -120,20 +158,18 @@ func (h *AIHandler) ListConversations(w http.ResponseWriter, r *http.Request) {
 //	@Security    BearerAuth
 //	@Param       publicId path string true "AI conversation public ID"
 //	@Success     200 {object} response.APIResponse[response.AIConversationResponse]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     401 {object} response.APIResponse[struct{}]
-//	@Failure     404 {object} response.APIResponse[struct{}]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     401 {object} response.APIResponse[response.EmptyData]
+//	@Failure     404 {object} response.APIResponse[response.EmptyData]
 //	@Router      /ai/conversations/{publicId} [get]
 func (h *AIHandler) GetConversation(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
-	publicID := chi.URLParam(r, "publicId")
-	if publicID == "" {
-		response.Error(w, http.StatusBadRequest, "INVALID_ID", "AI conversation public ID is required", nil)
+	publicID, ok := publicIDParam(w, r, "publicId", "AI conversation public ID is required")
+	if !ok {
 		return
 	}
 
@@ -145,7 +181,7 @@ func (h *AIHandler) GetConversation(w http.ResponseWriter, r *http.Request) {
 		q,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "AI_CONVERSATION_FETCH_FAILED", "Could not fetch AI conversation", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "AI_CONVERSATION_FETCH_FAILED", "Could not fetch AI conversation", err)
 		return
 	}
 	if result == nil {
@@ -168,20 +204,18 @@ func (h *AIHandler) GetConversation(w http.ResponseWriter, r *http.Request) {
 //	@Param       publicId path string                     true "AI conversation public ID"
 //	@Param       body     body request.SendAIMessageRequest true "AI message payload"
 //	@Success     201 {object} response.APIResponse[response.SendAIMessageResponse]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     401 {object} response.APIResponse[struct{}]
-//	@Failure     404 {object} response.APIResponse[struct{}]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     401 {object} response.APIResponse[response.EmptyData]
+//	@Failure     404 {object} response.APIResponse[response.EmptyData]
 //	@Router      /ai/conversations/{publicId}/messages [post]
 func (h *AIHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
-	publicID := chi.URLParam(r, "publicId")
-	if publicID == "" {
-		response.Error(w, http.StatusBadRequest, "INVALID_ID", "AI conversation public ID is required", nil)
+	publicID, ok := publicIDParam(w, r, "publicId", "AI conversation public ID is required")
+	if !ok {
 		return
 	}
 
@@ -203,12 +237,12 @@ func (h *AIHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		cmd,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "AI_MESSAGE_FAILED", "Could not send AI message", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "AI_MESSAGE_FAILED", "Could not send AI message", err)
 		return
 	}
 
 	resp := mapper.SendAIMessageResultDTOToResponse(result)
-	response.Success[response.SendAIMessageResponse](w, http.StatusCreated, "AI_MESSAGE_SENT", "AI message sent successfully", &resp)
+	response.Success(w, http.StatusCreated, "AI_MESSAGE_SENT", "AI message sent successfully", &resp)
 }
 
 // ArchiveConversation godoc
@@ -219,21 +253,19 @@ func (h *AIHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 //	@Produce     json
 //	@Security    BearerAuth
 //	@Param       publicId path string true "AI conversation public ID"
-//	@Success     200 {object} response.APIResponse[struct{}]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     401 {object} response.APIResponse[struct{}]
-//	@Failure     404 {object} response.APIResponse[struct{}]
+//	@Success     200 {object} response.APIResponse[response.EmptyData]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     401 {object} response.APIResponse[response.EmptyData]
+//	@Failure     404 {object} response.APIResponse[response.EmptyData]
 //	@Router      /ai/conversations/{publicId}/archive [patch]
 func (h *AIHandler) ArchiveConversation(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
-	publicID := chi.URLParam(r, "publicId")
-	if publicID == "" {
-		response.Error(w, http.StatusBadRequest, "INVALID_ID", "AI conversation public ID is required", nil)
+	publicID, ok := publicIDParam(w, r, "publicId", "AI conversation public ID is required")
+	if !ok {
 		return
 	}
 
@@ -245,9 +277,59 @@ func (h *AIHandler) ArchiveConversation(w http.ResponseWriter, r *http.Request) 
 		cmd,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "AI_CONVERSATION_ARCHIVE_FAILED", "Could not archive AI conversation", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "AI_CONVERSATION_ARCHIVE_FAILED", "Could not archive AI conversation", err)
 		return
 	}
 
 	writeEmptySuccess(w, http.StatusOK, "AI_CONVERSATION_ARCHIVED", "AI conversation archived successfully")
+}
+
+// UpdateConversation godoc
+//
+//	@Summary     Update AI conversation
+//	@Description Updates an AI conversation by public ID (e.g. rename title).
+//	@Tags        AI Conversations
+//	@Produce     json
+//	@Security    BearerAuth
+//	@Param       publicId path string true "AI conversation public ID"
+//	@Param       body body request.UpdateAIConversationRequest true "Update payload"
+//	@Success     200 {object} response.APIResponse[response.AIConversationResponse]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     401 {object} response.APIResponse[response.EmptyData]
+//	@Failure     404 {object} response.APIResponse[response.EmptyData]
+//	@Router      /ai/conversations/{publicId} [patch]
+func (h *AIHandler) UpdateConversation(w http.ResponseWriter, r *http.Request) {
+	userID, ok := RequireUserID(w, r)
+	if !ok {
+		return
+	}
+
+	publicID, ok := publicIDParam(w, r, "publicId", "AI conversation public ID is required")
+	if !ok {
+		return
+	}
+
+	req, ok := decodeAndValidate[request.UpdateAIConversationRequest](w, r, h.validator)
+	if !ok {
+		return
+	}
+
+	cmd := command.UpdateAIConversationCommand{
+		UserID:               userID,
+		ConversationPublicID: publicID,
+		Title:                req.Title,
+	}
+
+	result, err := messaging.Execute[command.UpdateAIConversationCommand, dto.AIConversationDTO](
+		h.commandBus,
+		r.Context(),
+		cmd,
+	)
+	if err != nil {
+		logAndRespond(w, httperr.StatusFrom(err), "AI_CONVERSATION_UPDATE_FAILED", "Could not update AI conversation", err)
+		return
+	}
+
+	resp := mapper.AIConversationDTOToResponse(result)
+	response.Success[response.AIConversationResponse](w, http.StatusOK, "AI_CONVERSATION_UPDATED", "AI conversation updated successfully", &resp)
 }

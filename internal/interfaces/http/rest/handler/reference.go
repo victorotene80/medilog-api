@@ -32,14 +32,14 @@ func NewReferenceHandler(commandBus *messaging.CommandBus, validator appContract
 //	@Tags        Reference Data
 //	@Produce     json
 //	@Success     200 {object} response.APIResponse[[]response.CountryResponse]
-//	@Failure     500 {object} response.APIResponse[struct{}]
+//	@Failure     500 {object} response.APIResponse[response.EmptyData]
 //	@Router      /reference/countries [get]
 func (h *ReferenceHandler) ListCountries(w http.ResponseWriter, r *http.Request) {
 	results, err := messaging.Execute[query.GetCountriesQuery, []dto.CountryDTO](
 		h.commandBus, r.Context(), query.GetCountriesQuery{},
 	)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "COUNTRIES_FETCH_FAILED", "Could not retrieve countries", err.Error())
+		logAndRespond(w, http.StatusInternalServerError, "COUNTRIES_FETCH_FAILED", "Could not retrieve countries", err)
 		return
 	}
 
@@ -66,7 +66,7 @@ func (h *ReferenceHandler) ListAllergies(w http.ResponseWriter, r *http.Request)
 		query.GetAllergiesQuery{Category: category},
 	)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "ALLERGIES_FETCH_FAILED", "Could not retrieve allergies", err.Error())
+		logAndRespond(w, http.StatusInternalServerError, "ALLERGIES_FETCH_FAILED", "Could not retrieve allergies", err)
 		return
 	}
 

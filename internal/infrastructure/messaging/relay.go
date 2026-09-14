@@ -22,8 +22,8 @@ type Config struct {
 }
 
 type Brokers struct {
-	//EventBroker MessageBroker
-	TaskBroker MessageBroker
+	EventBroker MessageBroker
+	TaskBroker  MessageBroker
 }
 
 type Relay struct {
@@ -31,7 +31,11 @@ type Relay struct {
 	brokers Brokers
 	cfg     Config
 	logger  *zap.Logger
+	done    chan struct{}
 }
+
+// Done is closed once Run has returned.
+func (r *Relay) Done() <-chan struct{} { return r.done }
 
 func New(
 	repo outboxInfra.OutboxRepository,
@@ -66,10 +70,16 @@ func New(
 		brokers: brokers,
 		cfg:     cfg,
 		logger:  logger,
+		done:    make(chan struct{}),
 	}
 }
 
+// Run polls the outbox until ctx is cancelled. It closes the channel returned by
+// Done when it has exited, so a caller can wait for an in-flight tick to finish
+// before closing the brokers underneath it.
 func (r *Relay) Run(ctx context.Context) {
+	defer close(r.done)
+
 	ticker := time.NewTicker(r.cfg.PollInterval)
 	defer ticker.Stop()
 
@@ -110,12 +120,20 @@ func (r *Relay) tick(ctx context.Context) error {
 		return fmt.Errorf("relay: fetch unprocessed: %w", err)
 	}
 
+	if len(envelopes) == 0 {
+		return nil
+	}
+
+	// Logged only when there is work. At the default one-second poll this line
+	// was 86,400 entries per day per instance, almost all of them count=0, into
+	// the Loki pipeline this project ships. The scheduler's tick already models
+	// the right behaviour by logging only when it created something.
 	r.logger.Info("relay fetched pending messages",
 		zap.Int("count", len(envelopes)),
 	)
 
 	for _, env := range envelopes {
-		r.logger.Info("relay processing message",
+		r.logger.Debug("relay processing message",
 			zap.String("id", env.ID),
 			zap.String("name", env.Name),
 			zap.String("kind", string(env.Kind)),
@@ -139,7 +157,7 @@ func (r *Relay) tick(ctx context.Context) error {
 				zap.String("kind", string(env.Kind)),
 				zap.Error(err),
 			)
-			_ = r.repo.MarkFailed(ctx, env.ID)
+			r.markFailed(ctx, env.ID, err)
 			continue
 		}
 
@@ -151,7 +169,7 @@ func (r *Relay) tick(ctx context.Context) error {
 			brokerName = "task"
 		}
 
-		r.logger.Info("relay publishing message",
+		r.logger.Debug("relay publishing message",
 			zap.String("id", env.ID),
 			zap.String("name", env.Name),
 			zap.String("kind", string(env.Kind)),
@@ -166,11 +184,11 @@ func (r *Relay) tick(ctx context.Context) error {
 				zap.String("broker", brokerName),
 				zap.Error(err),
 			)
-			_ = r.repo.MarkFailed(ctx, env.ID)
+			r.markFailed(ctx, env.ID, err)
 			continue
 		}
 
-		r.logger.Info("relay published message successfully",
+		r.logger.Debug("relay published message successfully",
 			zap.String("id", env.ID),
 			zap.String("name", env.Name),
 			zap.String("kind", string(env.Kind)),
@@ -185,7 +203,7 @@ func (r *Relay) tick(ctx context.Context) error {
 			continue
 		}
 
-		r.logger.Info("relay marked message sent",
+		r.logger.Debug("relay marked message sent",
 			zap.String("id", env.ID),
 			zap.String("name", env.Name),
 		)
@@ -194,20 +212,39 @@ func (r *Relay) tick(ctx context.Context) error {
 	return nil
 }
 
+// resolveBroker picks the broker for an envelope: a per-message override from
+// the route table if one is configured, otherwise the default for its kind.
+//
+// KindIntegrationEvent previously returned the *task* broker — harmless only
+// because bootstrap points both brokers at the same exchange, and actively
+// misleading because tick() logs "event" for the same message. The route tables
+// were threaded from config through bootstrap into this struct and then never
+// consulted.
+// markFailed records the failure and logs when even that fails. Discarding this
+// error meant a row could stay claimed as in_progress with no trace, waiting on
+// the reclaim sweep two minutes into the next boot.
+func (r *Relay) markFailed(ctx context.Context, id string, cause error) {
+	if err := r.repo.MarkFailed(ctx, id, cause); err != nil {
+		r.logger.Error("relay: mark failed did not persist",
+			zap.String("id", id),
+			zap.NamedError("cause", cause),
+			zap.Error(err),
+		)
+	}
+}
+
 func (r *Relay) resolveBroker(env appmsg.Envelope) (MessageBroker, error) {
 	switch env.Kind {
 	case appmsg.KindIntegrationEvent:
-		route := r.cfg.DefaultEventBroker
-		if v, ok := r.cfg.EventRoutes[env.Name]; ok {
-			route = v
+		if name, ok := r.cfg.EventRoutes[env.Name]; ok && name != "" {
+			return r.namedBroker(name)
 		}
-		return r.namedBroker(route)
+		return r.namedBroker(r.cfg.DefaultEventBroker)
 	case appmsg.KindTask:
-		route := r.cfg.DefaultTaskBroker
-		if v, ok := r.cfg.TaskRoutes[env.Name]; ok {
-			route = v
+		if name, ok := r.cfg.TaskRoutes[env.Name]; ok && name != "" {
+			return r.namedBroker(name)
 		}
-		return r.namedBroker(route)
+		return r.namedBroker(r.cfg.DefaultTaskBroker)
 	default:
 		return nil, fmt.Errorf("unknown message kind: %s", env.Kind)
 	}
@@ -215,11 +252,11 @@ func (r *Relay) resolveBroker(env appmsg.Envelope) (MessageBroker, error) {
 
 func (r *Relay) namedBroker(name string) (MessageBroker, error) {
 	switch name {
-	//case "event":
-	///	if r.brokers.EventBroker == nil {
-	//		return nil, fmt.Errorf("event broker is nil")
-	//	}
-	//	return r.brokers.EventBroker, nil
+	case "event":
+		if r.brokers.EventBroker == nil {
+			return nil, fmt.Errorf("event broker is nil")
+		}
+		return r.brokers.EventBroker, nil
 	case "task":
 		if r.brokers.TaskBroker == nil {
 			return nil, fmt.Errorf("task broker is nil")

@@ -3,8 +3,6 @@ package handler
 import (
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
@@ -36,12 +34,11 @@ func NewMedicationHandler(
 //	@Produce     json
 //	@Security    BearerAuth
 //	@Param       body body request.CreateMedicationRequest true "Medication payload"
-//	@Success     201 {object} response.APIResponse[struct{}]
+//	@Success     201 {object} response.APIResponse[response.EmptyData]
 //	@Router      /medications/ [post]
 func (h *MedicationHandler) CreateMedication(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
@@ -75,7 +72,7 @@ func (h *MedicationHandler) CreateMedication(w http.ResponseWriter, r *http.Requ
 
 	_, err := messaging.Execute[command.CreateMedicationCommand, struct{}](h.commandBus, r.Context(), cmd)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "MEDICATION_CREATE_FAILED", "Could not create medication", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "MEDICATION_CREATE_FAILED", "Could not create medication", err)
 		return
 	}
 
@@ -92,9 +89,8 @@ func (h *MedicationHandler) CreateMedication(w http.ResponseWriter, r *http.Requ
 //	@Success     200 {object} response.APIResponse[[]response.MedicationResponse]
 //	@Router      /medications/ [get]
 func (h *MedicationHandler) ListMedications(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
@@ -107,7 +103,7 @@ func (h *MedicationHandler) ListMedications(w http.ResponseWriter, r *http.Reque
 		h.commandBus, r.Context(), q,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "MEDICATIONS_FETCH_FAILED", "Could not fetch medications", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "MEDICATIONS_FETCH_FAILED", "Could not fetch medications", err)
 		return
 	}
 
@@ -125,15 +121,13 @@ func (h *MedicationHandler) ListMedications(w http.ResponseWriter, r *http.Reque
 //	@Success     200 {object} response.APIResponse[response.MedicationResponse]
 //	@Router      /medications/{publicId} [get]
 func (h *MedicationHandler) GetMedication(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
-	publicID := chi.URLParam(r, "publicId")
-	if publicID == "" {
-		response.Error(w, http.StatusBadRequest, "INVALID_ID", "Medication public ID is required", nil)
+	publicID, ok := publicIDParam(w, r, "publicId", "Medication public ID is required")
+	if !ok {
 		return
 	}
 
@@ -143,7 +137,7 @@ func (h *MedicationHandler) GetMedication(w http.ResponseWriter, r *http.Request
 		h.commandBus, r.Context(), q,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "MEDICATION_FETCH_FAILED", "Could not fetch medication", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "MEDICATION_FETCH_FAILED", "Could not fetch medication", err)
 		return
 	}
 	if result == nil {
@@ -164,18 +158,16 @@ func (h *MedicationHandler) GetMedication(w http.ResponseWriter, r *http.Request
 //	@Security    BearerAuth
 //	@Param       publicId path  string                        true "Medication public ID"
 //	@Param       body     body  request.UpdateMedicationRequest true "Updated medication"
-//	@Success     200 {object} response.APIResponse[struct{}]
+//	@Success     200 {object} response.APIResponse[response.EmptyData]
 //	@Router      /medications/{publicId} [put]
 func (h *MedicationHandler) UpdateMedication(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
-	publicID := chi.URLParam(r, "publicId")
-	if publicID == "" {
-		response.Error(w, http.StatusBadRequest, "INVALID_ID", "Medication public ID is required", nil)
+	publicID, ok := publicIDParam(w, r, "publicId", "Medication public ID is required")
+	if !ok {
 		return
 	}
 
@@ -208,7 +200,7 @@ func (h *MedicationHandler) UpdateMedication(w http.ResponseWriter, r *http.Requ
 
 	_, err := messaging.Execute[command.UpdateMedicationCommand, struct{}](h.commandBus, r.Context(), cmd)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "MEDICATION_UPDATE_FAILED", "Could not update medication", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "MEDICATION_UPDATE_FAILED", "Could not update medication", err)
 		return
 	}
 
@@ -222,18 +214,16 @@ func (h *MedicationHandler) UpdateMedication(w http.ResponseWriter, r *http.Requ
 //	@Produce     json
 //	@Security    BearerAuth
 //	@Param       publicId path string true "Medication public ID"
-//	@Success     200 {object} response.APIResponse[struct{}]
+//	@Success     200 {object} response.APIResponse[response.EmptyData]
 //	@Router      /medications/{publicId}/complete [patch]
 func (h *MedicationHandler) CompleteMedication(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
-	publicID := chi.URLParam(r, "publicId")
-	if publicID == "" {
-		response.Error(w, http.StatusBadRequest, "INVALID_ID", "Medication public ID is required", nil)
+	publicID, ok := publicIDParam(w, r, "publicId", "Medication public ID is required")
+	if !ok {
 		return
 	}
 
@@ -241,7 +231,7 @@ func (h *MedicationHandler) CompleteMedication(w http.ResponseWriter, r *http.Re
 
 	_, err := messaging.Execute[command.CompleteMedicationCommand, struct{}](h.commandBus, r.Context(), cmd)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "MEDICATION_COMPLETE_FAILED", "Could not complete medication", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "MEDICATION_COMPLETE_FAILED", "Could not complete medication", err)
 		return
 	}
 
@@ -255,18 +245,16 @@ func (h *MedicationHandler) CompleteMedication(w http.ResponseWriter, r *http.Re
 //	@Produce     json
 //	@Security    BearerAuth
 //	@Param       publicId path string true "Medication public ID"
-//	@Success     200 {object} response.APIResponse[struct{}]
+//	@Success     200 {object} response.APIResponse[response.EmptyData]
 //	@Router      /medications/{publicId} [delete]
 func (h *MedicationHandler) DeleteMedication(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
-	publicID := chi.URLParam(r, "publicId")
-	if publicID == "" {
-		response.Error(w, http.StatusBadRequest, "INVALID_ID", "Medication public ID is required", nil)
+	publicID, ok := publicIDParam(w, r, "publicId", "Medication public ID is required")
+	if !ok {
 		return
 	}
 
@@ -274,7 +262,7 @@ func (h *MedicationHandler) DeleteMedication(w http.ResponseWriter, r *http.Requ
 
 	_, err := messaging.Execute[command.DeleteMedicationCommand, struct{}](h.commandBus, r.Context(), cmd)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "MEDICATION_DELETE_FAILED", "Could not delete medication", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "MEDICATION_DELETE_FAILED", "Could not delete medication", err)
 		return
 	}
 
@@ -290,18 +278,16 @@ func (h *MedicationHandler) DeleteMedication(w http.ResponseWriter, r *http.Requ
 //	@Security    BearerAuth
 //	@Param       publicId path string                     true "Medication public ID"
 //	@Param       body     body request.LogAdherenceRequest true "Adherence log"
-//	@Success     201 {object} response.APIResponse[struct{}]
+//	@Success     201 {object} response.APIResponse[response.EmptyData]
 //	@Router      /medications/{publicId}/adherence [post]
 func (h *MedicationHandler) LogAdherence(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
-	publicID := chi.URLParam(r, "publicId")
-	if publicID == "" {
-		response.Error(w, http.StatusBadRequest, "INVALID_ID", "Medication public ID is required", nil)
+	publicID, ok := publicIDParam(w, r, "publicId", "Medication public ID is required")
+	if !ok {
 		return
 	}
 
@@ -331,7 +317,7 @@ func (h *MedicationHandler) LogAdherence(w http.ResponseWriter, r *http.Request)
 
 	_, err = messaging.Execute[command.LogMedicationAdherenceCommand, struct{}](h.commandBus, r.Context(), cmd)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "ADHERENCE_LOG_FAILED", "Could not log adherence", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "ADHERENCE_LOG_FAILED", "Could not log adherence", err)
 		return
 	}
 

@@ -3,11 +3,15 @@ package persistence
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence/models"
 	"gorm.io/gorm"
 )
+
+var _ repository.RegisteredMedicineRepository = (*RegisteredMedicineRepository)(nil)
 
 type RegisteredMedicineRepository struct {
 	db *gorm.DB
@@ -19,7 +23,7 @@ func NewRegisteredMedicineRepository(db *gorm.DB) *RegisteredMedicineRepository 
 
 func (r *RegisteredMedicineRepository) FindByID(ctx context.Context, id int64) (*entities.RegisteredMedicine, error) {
 	var m models.RegisteredMedicineModel
-	if err := r.db.WithContext(ctx).First(&m, id).Error; err != nil {
+	if err := conn(ctx, r.db).First(&m, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -33,7 +37,7 @@ func (r *RegisteredMedicineRepository) FindByRegistrationNumber(
 	registrationNumber, countryCode string,
 ) (*entities.RegisteredMedicine, error) {
 	var m models.RegisteredMedicineModel
-	err := r.db.WithContext(ctx).
+	err := conn(ctx, r.db).
 		Where("registration_number = ? AND country_code = ?", registrationNumber, countryCode).
 		First(&m).Error
 	if err != nil {
@@ -47,7 +51,7 @@ func (r *RegisteredMedicineRepository) FindByRegistrationNumber(
 
 func (r *RegisteredMedicineRepository) FindByBarcode(ctx context.Context, barcode string) (*entities.RegisteredMedicine, error) {
 	var m models.RegisteredMedicineModel
-	if err := r.db.WithContext(ctx).Where("barcode = ?", barcode).First(&m).Error; err != nil {
+	if err := conn(ctx, r.db).Where("barcode = ?", barcode).First(&m).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -62,7 +66,7 @@ func (r *RegisteredMedicineRepository) Search(
 	limit int,
 ) ([]*entities.RegisteredMedicine, error) {
 	var ms []models.RegisteredMedicineModel
-	q := r.db.WithContext(ctx).
+	q := conn(ctx, r.db).
 		Where("country_code = ? AND drug_name ILIKE ?", countryCode, "%"+drugName+"%").
 		Limit(limit).
 		Find(&ms)
@@ -79,7 +83,7 @@ func (r *RegisteredMedicineRepository) Search(
 
 func (r *RegisteredMedicineRepository) Save(ctx context.Context, e *entities.RegisteredMedicine) error {
 	m := models.RegisteredMedicineToModel(e)
-	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
+	if err := conn(ctx, r.db).Create(m).Error; err != nil {
 		return err
 	}
 	e.ID = m.ID
@@ -95,7 +99,7 @@ func (r *RegisteredMedicineRepository) Update(ctx context.Context, e *entities.R
 	}
 
 	model := models.RegisteredMedicineToModel(e)
-	result := r.db.WithContext(ctx).
+	result := conn(ctx, r.db).
 		Model(&models.RegisteredMedicineModel{}).
 		Where("id = ?", e.ID).
 		Select("*").
@@ -105,7 +109,7 @@ func (r *RegisteredMedicineRepository) Update(ctx context.Context, e *entities.R
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 	return nil
 }
@@ -115,12 +119,12 @@ func (r *RegisteredMedicineRepository) Delete(ctx context.Context, id int64) err
 		return errors.New("registered medicine id is required")
 	}
 
-	result := r.db.WithContext(ctx).Delete(&models.RegisteredMedicineModel{}, id)
+	result := conn(ctx, r.db).Model(&models.RegisteredMedicineModel{}).Where("id = ?", id).Updates(map[string]any{"deleted_at": time.Now()})
 	if result.Error != nil {
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 	return nil
 }

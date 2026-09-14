@@ -57,7 +57,47 @@ func (m *AuthMiddleware) Handle(next http.Handler) http.Handler {
 	})
 }
 
+// OptionalAuth attaches the auth context when the caller presents a valid
+// bearer token, and otherwise lets the request through anonymously. It exists
+// for endpoints that accept anonymous callers but should still attribute the
+// request when a signed-in user makes it. A token that is present but invalid
+// is still rejected — presenting credentials that do not validate is an error,
+// not an anonymous request.
+func (m *AuthMiddleware) OptionalAuth(next http.Handler) http.Handler {
+	authenticated := m.Handle(next)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The only difference from Handle is what a *missing* token means. Once a
+		// token is present the two must validate, classify and log identically,
+		// so this delegates rather than repeating the body — the copy previously
+		// here meant every fix to the error handling had to be made twice.
+		if _, ok := bearerToken(r); !ok {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		authenticated.ServeHTTP(w, r)
+	})
+}
+
+// RequireOnboardingCompleted rejects callers who have not finished onboarding.
+// It is the default gate for authenticated routes.
 func (m *AuthMiddleware) RequireOnboardingCompleted(next http.Handler) http.Handler {
+	return m.requireUserCheck(next, m.authSvc.CheckUserAccess)
+}
+
+// RequireActiveUser applies every account check except onboarding. It exists
+// for the endpoints a user must reach in order to complete onboarding — gating
+// those on RequireOnboardingCompleted would lock a new user out of the only
+// route that can finish their onboarding.
+func (m *AuthMiddleware) RequireActiveUser(next http.Handler) http.Handler {
+	return m.requireUserCheck(next, m.authSvc.CheckUserActive)
+}
+
+func (m *AuthMiddleware) requireUserCheck(
+	next http.Handler,
+	check func(context.Context, int64) error,
+) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authCtx, ok := r.Context().Value(appContracts.AuthContextKey).(appContracts.AuthContext)
 		if !ok {
@@ -71,7 +111,7 @@ func (m *AuthMiddleware) RequireOnboardingCompleted(next http.Handler) http.Hand
 			return
 		}
 
-		if err := m.authSvc.CheckUserAccess(r.Context(), userID); err != nil {
+		if err := check(r.Context(), userID); err != nil {
 			switch {
 			case errors.Is(err, application.ErrUserNotFound):
 				response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "User account not found", nil)

@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence/models"
 	"gorm.io/gorm"
 )
+
+var _ repository.OTPCodeRepository = (*OTPCodeRepository)(nil)
 
 type OTPCodeRepository struct {
 	db *gorm.DB
@@ -20,7 +23,8 @@ func NewOTPCodeRepository(db *gorm.DB) *OTPCodeRepository {
 
 func (r *OTPCodeRepository) FindLatestByRecipientAndPurpose(ctx context.Context, recipient, purpose string) (*entities.OTPCode, error) {
 	var m models.OTPCodeModel
-	if err := r.db.WithContext(ctx).
+
+	if err := conn(ctx, r.db).
 		Where("recipient = ? AND purpose = ? AND used_at IS NULL", recipient, purpose).
 		Order("created_at DESC").
 		First(&m).Error; err != nil {
@@ -34,7 +38,7 @@ func (r *OTPCodeRepository) FindLatestByRecipientAndPurpose(ctx context.Context,
 
 func (r *OTPCodeRepository) FindByID(ctx context.Context, id int64) (*entities.OTPCode, error) {
 	var m models.OTPCodeModel
-	if err := r.db.WithContext(ctx).First(&m, id).Error; err != nil {
+	if err := conn(ctx, r.db).First(&m, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -45,7 +49,7 @@ func (r *OTPCodeRepository) FindByID(ctx context.Context, id int64) (*entities.O
 
 func (r *OTPCodeRepository) Save(ctx context.Context, otp *entities.OTPCode) error {
 	m := models.OTPCodeToModel(otp)
-	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
+	if err := conn(ctx, r.db).Create(m).Error; err != nil {
 		return err
 	}
 	otp.ID = m.ID
@@ -53,11 +57,11 @@ func (r *OTPCodeRepository) Save(ctx context.Context, otp *entities.OTPCode) err
 }
 
 func (r *OTPCodeRepository) Update(ctx context.Context, otp *entities.OTPCode) error {
-	return r.db.WithContext(ctx).Save(models.OTPCodeToModel(otp)).Error
+	return conn(ctx, r.db).Save(models.OTPCodeToModel(otp)).Error
 }
 
 func (r *OTPCodeRepository) InvalidatePreviousByRecipientAndPurpose(ctx context.Context, recipient, purpose string, now time.Time) error {
-	return r.db.WithContext(ctx).Model(&models.OTPCodeModel{}).
+	return conn(ctx, r.db).Model(&models.OTPCodeModel{}).
 		Where("recipient = ? AND purpose = ? AND used_at IS NULL", recipient, purpose).
 		UpdateColumn("used_at", now).Error
 }

@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
 	"github.com/victorotene80/medilog-api/internal/application/mapper"
 	"github.com/victorotene80/medilog-api/internal/application/query"
@@ -29,7 +29,7 @@ func (h *GetDashboardHandler) Handle(
 	q query.GetDashboardQuery,
 ) (*dto.DashboardDTO, error) {
 	if q.UserID <= 0 {
-		return nil, errors.New("user id is required")
+		return nil, application.NewValidation("user id is required")
 	}
 
 	dashboard, err := h.dashboard.GetByUserID(ctx, q.UserID, h.clock())

@@ -39,14 +39,20 @@ func (s *DefaultClaudeService) Send(
 		req.MaxTokens = s.cfg.MaxTokens
 	}
 
+	headers := map[string]string{
+		"x-api-key":         s.cfg.APIKey,
+		"anthropic-version": s.cfg.APIVersion,
+	}
+
+	if s.cfg.WorkspaceID != "" {
+		headers["anthropic-workspace-id"] = s.cfg.WorkspaceID
+	}
+
 	result, err := s.client.Do(ctx, svchttp.HTTPRequest{
-		Method: http.MethodPost,
-		URL:    s.cfg.BaseURL + messagesPath,
-		Headers: map[string]string{
-			"x-api-key":         s.cfg.APIKey,
-			"anthropic-version": s.cfg.APIVersion,
-		},
-		Body: req,
+		Method:  http.MethodPost,
+		URL:     s.cfg.BaseURL + messagesPath,
+		Headers: headers,
+		Body:    req,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("claude: http error: %w", err)

@@ -30,7 +30,7 @@ func (r *UserAuthProviderRepository) FindByProviderUID(
 ) (*entities.UserAuthProvider, error) {
 	var model models.UserAuthProviderModel
 
-	err := r.db.WithContext(ctx).
+	err := conn(ctx, r.db).
 		Where("provider = ? AND provider_uid = ?", provider, providerUID).
 		First(&model).Error
 
@@ -50,7 +50,7 @@ func (r *UserAuthProviderRepository) FindByUserID(
 ) ([]*entities.UserAuthProvider, error) {
 	var modelList []models.UserAuthProviderModel
 
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("user_id = ?", userID).
 		Find(&modelList).Error; err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (r *UserAuthProviderRepository) Create(
 
 	model := models.UserAuthProviderEntityToModel(p)
 
-	if err := r.db.WithContext(ctx).Create(model).Error; err != nil {
+	if err := conn(ctx, r.db).Create(model).Error; err != nil {
 		return err
 	}
 

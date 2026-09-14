@@ -2,11 +2,12 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"strconv"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
 	"github.com/victorotene80/medilog-api/internal/application/query"
+	"github.com/victorotene80/medilog-api/internal/domain/aggregates"
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
 	"github.com/victorotene80/medilog-api/internal/domain/repository"
 )
@@ -24,12 +25,22 @@ func (h *GetUserHandler) Handle(
 	q query.GetUserQuery,
 ) (*dto.GetUserDTO, error) {
 	if q.ID <= 0 {
-		return nil, errors.New("user id is required")
+		return nil, application.NewValidation("user id is required")
 	}
 
 	agg, err := h.userRepo.FindByID(ctx, q.ID)
 	if err != nil || agg == nil || agg.User == nil {
 		return nil, err
+	}
+
+	return UserAggregateToGetUserDTO(agg), nil
+}
+
+// UserAggregateToGetUserDTO is shared by GET and PATCH /users/me so both return
+// exactly the same shape; a client can swap one response for the other.
+func UserAggregateToGetUserDTO(agg *aggregates.UserAggregate) *dto.GetUserDTO {
+	if agg == nil || agg.User == nil {
+		return nil
 	}
 
 	var (
@@ -52,9 +63,21 @@ func (h *GetUserHandler) Handle(
 		country = agg.User.CountryCode.String()
 	}
 
+	weightUnit := entities.DefaultWeightUnit
+	temperatureUnit := entities.DefaultTemperatureUnit
+
 	if agg.Profile != nil {
 		height = agg.Profile.Height
 		weight = agg.Profile.Weight
+
+		// Fall back to the defaults rather than emitting "": a profile row
+		// predating the column would otherwise report no unit at all.
+		if agg.Profile.WeightUnit != "" {
+			weightUnit = agg.Profile.WeightUnit
+		}
+		if agg.Profile.TemperatureUnit != "" {
+			temperatureUnit = agg.Profile.TemperatureUnit
+		}
 	}
 
 	emergencyContact := mapPrimaryEmergencyContact(agg.EmergencyContacts)
@@ -70,6 +93,8 @@ func (h *GetUserHandler) Handle(
 		BloodType:           bloodType,
 		Height:              height,
 		Weight:              weight,
+		WeightUnit:          weightUnit,
+		TemperatureUnit:     temperatureUnit,
 		Country:             country,
 		AvatarURL:           agg.User.AvatarURL,
 		CountryCode:         country,
@@ -79,7 +104,7 @@ func (h *GetUserHandler) Handle(
 		LastLoginAt:         agg.User.LastLoginAt,
 		CreatedAt:           agg.User.CreatedAt,
 		UpdatedAt:           agg.User.UpdatedAt,
-	}, nil
+	}
 }
 
 func mapPrimaryEmergencyContact(
@@ -115,6 +140,7 @@ func mapPrimaryEmergencyContact(
 		Name:         selected.Name,
 		Relationship: selected.Relationship,
 		Phone:        selected.Phone,
+		CountryCode:  selected.CountryCode,
 		IsPrimary:    selected.IsPrimary,
 	}
 }

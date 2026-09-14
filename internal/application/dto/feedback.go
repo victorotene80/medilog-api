@@ -2,9 +2,11 @@ package dto
 
 import "time"
 
+// FeedbackResponseDTO deliberately carries no user identifier: feedback may be
+// submitted anonymously, and echoing an owner back to a reader served no client
+// purpose while leaking who filed what.
 type FeedbackResponseDTO struct {
 	ID          string    `json:"id"`
-	UserID      *string   `json:"user_id,omitempty"`
 	Type        string    `json:"type"`
 	Rating      *int      `json:"rating,omitempty"`
 	Title       *string   `json:"title,omitempty"`

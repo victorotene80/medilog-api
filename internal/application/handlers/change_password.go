@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	clockpkg "github.com/victorotene80/medilog-api/internal/shared/clock"
+
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
@@ -20,35 +22,29 @@ type ChangePasswordHandler struct {
 	userRepo        repository.UserAggregateRepository
 	passwordHasher  contracts.PasswordHasher
 	passwordService *domainServices.PasswordService
-	refreshRepo     repository.RefreshTokenRepository
-	sessionCache    appContracts.Cache[string, appContracts.CachedToken]
+	sessions        appContracts.SessionInvalidator
 	auditLogger     appContracts.AuditLogger
 	clock           func() time.Time
-	version         appContracts.SessionCache
 }
 
 func NewChangePasswordHandler(
 	userRepo repository.UserAggregateRepository,
 	passwordHasher contracts.PasswordHasher,
 	passwordService *domainServices.PasswordService,
-	refreshRepo repository.RefreshTokenRepository,
-	sessionCache appContracts.Cache[string, appContracts.CachedToken],
+	sessions appContracts.SessionInvalidator,
 	auditLogger appContracts.AuditLogger,
-	version appContracts.SessionCache,
 	clock func() time.Time,
 ) *ChangePasswordHandler {
 	if clock == nil {
-		clock = func() time.Time { return time.Now().UTC() }
+		clock = clockpkg.Default()
 	}
 	return &ChangePasswordHandler{
 		userRepo:        userRepo,
 		passwordHasher:  passwordHasher,
 		passwordService: passwordService,
-		refreshRepo:     refreshRepo,
-		sessionCache:    sessionCache,
+		sessions:        sessions,
 		auditLogger:     auditLogger,
 		clock:           clock,
-		version:         version,
 	}
 }
 
@@ -61,11 +57,11 @@ func (h *ChangePasswordHandler) Handle(
 
 	agg, err := h.userRepo.FindByID(ctx, cmd.UserID)
 	if err != nil || agg == nil {
-		return struct{}{}, errors.New("user not found")
+		return struct{}{}, application.NewNotFound("user not found")
 	}
 
 	if agg.User.PasswordHash == nil || !h.passwordHasher.Verify(cmd.OldPassword, *agg.User.PasswordHash) {
-		return struct{}{}, errors.New("current password is incorrect")
+		return struct{}{}, application.NewUnauthorized("current password is incorrect")
 	}
 
 	if err := h.passwordService.Validate(cmd.NewPassword); err != nil {
@@ -83,17 +79,11 @@ func (h *ChangePasswordHandler) Handle(
 		return struct{}{}, fmt.Errorf("save updated password: %w", err)
 	}
 
-	// revoke all sessions — force re-login everywhere
-	if err := h.refreshRepo.RevokeAllForUser(ctx, cmd.UserID, now); err != nil {
-		return struct{}{}, fmt.Errorf("revoke sessions: %w", err)
+	// Force re-login everywhere. The version bump inside InvalidateAllForUser is
+	// what evicts already-issued access tokens from the session cache.
+	if err := h.sessions.InvalidateAllForUser(ctx, cmd.UserID, now); err != nil {
+		return struct{}{}, fmt.Errorf("invalidate sessions: %w", err)
 	}
-
-	if h.version != nil {
-		_ = h.version.IncrementVersion(ctx, cmd.UserID)
-	}
-	// best-effort cache invalidation — we don't have all session IDs here
-	// so we rely on TTL expiry for stale cache entries
-	// if you want immediate invalidation, store a per-user token version in cache
 
 	if h.auditLogger != nil {
 		userID := cmd.UserID

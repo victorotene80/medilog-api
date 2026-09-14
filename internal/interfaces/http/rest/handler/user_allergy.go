@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
@@ -43,14 +41,13 @@ func NewUserAllergyHandler(
 //	@Produce     json
 //	@Security    BearerAuth
 //	@Param       body body request.AddUserAllergiesRequest true "Allergies payload"
-//	@Success     201 {object} response.APIResponse[struct{}]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     401 {object} response.APIResponse[struct{}]
+//	@Success     201 {object} response.APIResponse[response.EmptyData]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     401 {object} response.APIResponse[response.EmptyData]
 //	@Router      /health/allergies/ [post]
 func (h *UserAllergyHandler) AddUserAllergies(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
@@ -79,7 +76,7 @@ func (h *UserAllergyHandler) AddUserAllergies(w http.ResponseWriter, r *http.Req
 		h.commandBus, r.Context(), cmd,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "ALLERGIES_ADD_FAILED", "Could not add allergies", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "ALLERGIES_ADD_FAILED", "Could not add allergies", err)
 		return
 	}
 
@@ -96,12 +93,11 @@ func (h *UserAllergyHandler) AddUserAllergies(w http.ResponseWriter, r *http.Req
 //	@Security    BearerAuth
 //	@Param       category query int false "Allergy category (1-5)"
 //	@Success     200 {object} response.APIResponse[[]response.UserAllergyResponse]
-//	@Failure     401 {object} response.APIResponse[struct{}]
+//	@Failure     401 {object} response.APIResponse[response.EmptyData]
 //	@Router      /health/allergies/ [get]
 func (h *UserAllergyHandler) ListUserAllergies(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
@@ -120,7 +116,7 @@ func (h *UserAllergyHandler) ListUserAllergies(w http.ResponseWriter, r *http.Re
 		h.commandBus, r.Context(), q,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "ALLERGIES_FETCH_FAILED", "Could not fetch allergies", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "ALLERGIES_FETCH_FAILED", "Could not fetch allergies", err)
 		return
 	}
 
@@ -136,21 +132,19 @@ func (h *UserAllergyHandler) ListUserAllergies(w http.ResponseWriter, r *http.Re
 //	@Produce     json
 //	@Security    BearerAuth
 //	@Param       publicId path string true "Allergy public ID (UUID)"
-//	@Success     200 {object} response.APIResponse[struct{}]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     401 {object} response.APIResponse[struct{}]
-//	@Failure     404 {object} response.APIResponse[struct{}]
+//	@Success     200 {object} response.APIResponse[response.EmptyData]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     401 {object} response.APIResponse[response.EmptyData]
+//	@Failure     404 {object} response.APIResponse[response.EmptyData]
 //	@Router      /health/allergies/{publicId} [delete]
 func (h *UserAllergyHandler) DeleteUserAllergy(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
-	publicID := chi.URLParam(r, "publicId")
-	if publicID == "" {
-		response.Error(w, http.StatusBadRequest, "INVALID_ID", "Allergy public ID is required", nil)
+	publicID, ok := publicIDParam(w, r, "publicId", "Allergy public ID is required")
+	if !ok {
 		return
 	}
 
@@ -163,9 +157,74 @@ func (h *UserAllergyHandler) DeleteUserAllergy(w http.ResponseWriter, r *http.Re
 		h.commandBus, r.Context(), cmd,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "ALLERGY_DELETE_FAILED", "Could not delete allergy", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "ALLERGY_DELETE_FAILED", "Could not delete allergy", err)
 		return
 	}
 
 	writeEmptySuccess(w, http.StatusOK, "ALLERGY_DELETED", "Allergy removed successfully")
+}
+
+// UpdateUserAllergy godoc
+//
+//	@Summary     Update one of the authenticated user's allergies
+//	@Description Fully replaces the allergy record identified by its public id.
+//	             The record keeps its public id, unlike the delete-then-re-add
+//	             workaround this replaces.
+//	@Tags        Health / Allergies
+//	@Accept      json
+//	@Produce     json
+//	@Security    BearerAuth
+//	@Param       publicId path string true "User allergy public id"
+//	@Param       body body request.UpdateUserAllergyRequest true "Allergy payload"
+//	@Success     200 {object} response.APIResponse[response.UserAllergyResponse]
+//	@Failure     401 {object} response.APIResponse[response.EmptyData]
+//	@Failure     404 {object} response.APIResponse[response.EmptyData]
+//	@Failure     409 {object} response.APIResponse[response.EmptyData]
+//	@Router      /health/allergies/{publicId} [put]
+func (h *UserAllergyHandler) UpdateUserAllergy(w http.ResponseWriter, r *http.Request) {
+	userID, ok := RequireUserID(w, r)
+	if !ok {
+		return
+	}
+
+	publicID, valid := publicIDParam(w, r, "publicId", "Invalid allergy id")
+	if !valid {
+		return
+	}
+
+	req, ok := decodeAndValidate[request.UpdateUserAllergyRequest](w, r, h.validator)
+	if !ok {
+		return
+	}
+
+	cmd := command.UpdateUserAllergyCommand{
+		UserID:      userID,
+		PublicID:    publicID,
+		Name:        req.Name,
+		Description: req.Description,
+		Severity:    req.Severity,
+		Category:    req.Category,
+	}
+
+	result, err := messaging.Execute[command.UpdateUserAllergyCommand, *dto.UserAllergyDTO](
+		h.commandBus, r.Context(), cmd,
+	)
+	if err != nil {
+		logAndRespond(
+			w,
+			httperr.StatusFrom(err),
+			"ALLERGY_UPDATE_FAILED",
+			"Could not update allergy",
+			err,
+		)
+		return
+	}
+
+	if result == nil {
+		response.Error(w, http.StatusNotFound, "ALLERGY_NOT_FOUND", "Allergy not found", nil)
+		return
+	}
+
+	resp := mapper.UserAllergyDTOToResponse(*result)
+	response.Success(w, http.StatusOK, "ALLERGY_UPDATED", "Allergy updated successfully", &resp)
 }

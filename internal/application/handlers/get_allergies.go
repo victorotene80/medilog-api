@@ -35,9 +35,13 @@ func (h *GetAllergiesHandler) Handle(
 	var err error
 
 	if q.Category != nil {
-		category, err := valueobjects.NewAllergyCategory(*q.Category)
-		if err != nil {
-			return nil, err
+		// Declared with = rather than := on purpose: a fresh `category, err :=`
+		// here shadows the outer err, so the repository error below is written to
+		// the inner variable and the check after this block reads nil — a
+		// database failure then returns 200 with an empty catalogue.
+		category, categoryErr := valueobjects.NewAllergyCategory(*q.Category)
+		if categoryErr != nil {
+			return nil, categoryErr
 		}
 
 		allergies, err = h.allergyRepository.FindByCategory(ctx, category.Int())

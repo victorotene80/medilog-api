@@ -3,7 +3,6 @@ package services
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 )
@@ -22,23 +21,19 @@ func NewSessionKeyHasher(pepper string) (*SessionKeyHasher, error) {
 	}, nil
 }
 
+// Hash derives the value stored in refresh_tokens.token_hash and referenced by
+// replaced_by_token_hash.
+//
+// This is a rotation breadcrumb, not an authentication credential: the raw key
+// is never returned to any client, so nothing can present it and there is
+// nothing to verify it against. Making it a real second factor would mean
+// handing the raw key to the client and looking the row up by hash on refresh —
+// a change to what the refresh token *is*, not a bug fix. Until that is a
+// deliberate decision, do not read this as a security control.
 func (h *SessionKeyHasher) Hash(rawKey string) string {
 	data := h.pepper + rawKey
 	hash := sha256.Sum256([]byte(data))
 	return hex.EncodeToString(hash[:])
-}
-
-func (h *SessionKeyHasher) Verify(rawKey, storedHash string) bool {
-	computed := h.Hash(rawKey)
-
-	if len(computed) != len(storedHash) {
-		return false
-	}
-
-	return subtle.ConstantTimeCompare(
-		[]byte(computed),
-		[]byte(storedHash),
-	) == 1
 }
 
 func GenerateRandomString(length int) (string, error) {

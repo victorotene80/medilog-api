@@ -1,6 +1,4 @@
-//go:build ignore
-
-// COMMENTED OUT — OTel telemetry middleware (traces + metrics).
+// OTel telemetry middleware (traces + metrics).
 // Remove the //go:build ignore line above to re-enable.
 // ================================================================================
 
@@ -82,7 +80,7 @@ func (m *TelemetryMiddleware) Handle(next http.Handler) http.Handler {
 		m.activeRequests.Add(ctx, 1, metric.WithAttributes(commonAttrs...))
 		defer m.activeRequests.Add(ctx, -1, metric.WithAttributes(commonAttrs...))
 
-		rw := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		rw := &telemetryStatusRecorder{ResponseWriter: w, status: http.StatusOK}
 
 		start := time.Now()
 		next.ServeHTTP(rw, r.WithContext(ctx))
@@ -98,12 +96,12 @@ func (m *TelemetryMiddleware) Handle(next http.Handler) http.Handler {
 	})
 }
 
-type statusRecorder struct {
+type telemetryStatusRecorder struct {
 	http.ResponseWriter
 	status int
 }
 
-func (r *statusRecorder) WriteHeader(code int) {
+func (r *telemetryStatusRecorder) WriteHeader(code int) {
 	r.status = code
 	r.ResponseWriter.WriteHeader(code)
 }

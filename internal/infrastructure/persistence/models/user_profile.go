@@ -13,6 +13,7 @@ type UserProfileModel struct {
 	Height                      *float64   `gorm:"column:height"`
 	WeightUnit                  string     `gorm:"column:weight_unit;default:kg"`
 	TemperatureUnit             string     `gorm:"column:temperature_unit;default:celsius"`
+	Timezone                    string     `gorm:"column:timezone;not null;default:UTC"`
 	AIQuestionsUsed             int        `gorm:"column:ai_questions_used;not null;default:0"`
 	AIQuestionsTotal            int        `gorm:"column:ai_questions_total;not null;default:10"`
 	AIIsPro                     bool       `gorm:"column:ai_is_pro;not null;default:false"`
@@ -45,6 +46,7 @@ func UserProfileModelToEntity(m *UserProfileModel) *entities.UserProfile {
 		Height:                      m.Height,
 		WeightUnit:                  m.WeightUnit,
 		TemperatureUnit:             m.TemperatureUnit,
+		Timezone:                    m.Timezone,
 		AIQuestionsUsed:             m.AIQuestionsUsed,
 		AIQuestionsTotal:            m.AIQuestionsTotal,
 		AIIsPro:                     m.AIIsPro,
@@ -74,6 +76,7 @@ func UserProfileEntityToModel(e *entities.UserProfile) *UserProfileModel {
 		Height:                      e.Height,
 		WeightUnit:                  e.WeightUnit,
 		TemperatureUnit:             e.TemperatureUnit,
+		Timezone:                    e.Timezone,
 		AIQuestionsUsed:             e.AIQuestionsUsed,
 		AIQuestionsTotal:            e.AIQuestionsTotal,
 		AIIsPro:                     e.AIIsPro,

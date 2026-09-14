@@ -39,9 +39,17 @@ func ToEnvelope(e events.DomainEvent, metadata map[string]string) (Envelope, err
 		kind = KindIntegrationEvent
 	}
 
+	// Explicit metadata wins; otherwise resolve the domain event name to its
+	// published routing key. Falling straight back to e.EventName() is what made
+	// register's user.created land on "user.created", which no queue binds to —
+	// the exchange discarded it and the relay marked the row sent.
 	name := metadata["message_name"]
 	if name == "" {
-		name = e.EventName()
+		if wire, ok := WireNameFor(e.EventName()); ok {
+			name = wire
+		} else {
+			name = e.EventName()
+		}
 	}
 
 	aggregateType := metadata["aggregate_type"]

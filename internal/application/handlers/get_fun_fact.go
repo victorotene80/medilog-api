@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
 	"github.com/victorotene80/medilog-api/internal/application/mapper"
 	"github.com/victorotene80/medilog-api/internal/application/query"
@@ -24,7 +24,7 @@ func (h *GetFunFactHandler) Handle(
 	q query.GetFunFactQuery,
 ) (*dto.FunFactDTO, error) {
 	if q.ID <= 0 {
-		return nil, errors.New("fun fact id is required")
+		return nil, application.NewValidation("fun fact id is required")
 	}
 
 	fact, err := h.funFacts.FindByID(ctx, q.ID)
@@ -32,6 +32,15 @@ func (h *GetFunFactHandler) Handle(
 		return nil, fmt.Errorf("find fun fact: %w", err)
 	}
 	if fact == nil {
+		return nil, nil
+	}
+
+	// is_active is the publication gate: DashboardRepository.getFunFact already
+	// filters on it, so a retracted fact must not remain readable here either.
+	// Filtered in this query handler rather than in FunFactRepository.FindByID,
+	// which the admin update and delete handlers share and which must still
+	// return a retracted fact so it can be re-activated.
+	if !fact.IsActive {
 		return nil, nil
 	}
 

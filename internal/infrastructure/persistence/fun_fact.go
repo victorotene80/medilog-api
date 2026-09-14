@@ -3,11 +3,15 @@ package persistence
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence/models"
 	"gorm.io/gorm"
 )
+
+var _ repository.FunFactRepository = (*FunFactRepository)(nil)
 
 type FunFactRepository struct {
 	db *gorm.DB
@@ -20,7 +24,7 @@ func NewFunFactRepository(db *gorm.DB) *FunFactRepository {
 func (r *FunFactRepository) FindByID(ctx context.Context, id int64) (*entities.FunFact, error) {
 	var m models.FunFactModel
 
-	if err := r.db.WithContext(ctx).First(&m, id).Error; err != nil {
+	if err := conn(ctx, r.db).Where("deleted_at IS NULL").First(&m, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -34,7 +38,7 @@ func (r *FunFactRepository) FindAll(
 	ctx context.Context,
 	activeOnly bool,
 ) ([]*entities.FunFact, error) {
-	query := r.db.WithContext(ctx).Model(&models.FunFactModel{})
+	query := conn(ctx, r.db).Model(&models.FunFactModel{})
 	if activeOnly {
 		query = query.Where("is_active = ?", true)
 	}
@@ -58,7 +62,7 @@ func (r *FunFactRepository) Save(ctx context.Context, fact *entities.FunFact) er
 	}
 
 	m := models.FunFactToModel(fact)
-	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
+	if err := conn(ctx, r.db).Create(m).Error; err != nil {
 		return err
 	}
 
@@ -77,7 +81,7 @@ func (r *FunFactRepository) Update(ctx context.Context, fact *entities.FunFact) 
 
 	m := models.FunFactToModel(fact)
 
-	result := r.db.WithContext(ctx).
+	result := conn(ctx, r.db).
 		Model(&models.FunFactModel{}).
 		Where("id = ?", fact.ID).
 		Select("*").
@@ -88,7 +92,7 @@ func (r *FunFactRepository) Update(ctx context.Context, fact *entities.FunFact) 
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil
@@ -99,12 +103,12 @@ func (r *FunFactRepository) Delete(ctx context.Context, id int64) error {
 		return errors.New("fun fact id is required")
 	}
 
-	result := r.db.WithContext(ctx).Delete(&models.FunFactModel{}, id)
+	result := conn(ctx, r.db).Model(&models.FunFactModel{}).Where("id = ?", id).Updates(map[string]any{"deleted_at": time.Now()})
 	if result.Error != nil {
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil

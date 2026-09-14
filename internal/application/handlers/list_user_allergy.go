@@ -7,7 +7,6 @@ import (
 	"github.com/victorotene80/medilog-api/internal/application/query"
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
 	"github.com/victorotene80/medilog-api/internal/domain/repository"
-	"github.com/victorotene80/medilog-api/internal/domain/valueobjects"
 )
 
 type ListUserAllergiesHandler struct {
@@ -56,6 +55,7 @@ func userAllergyToDTO(a *entities.UserAllergy) dto.UserAllergyDTO {
 		Name:        a.Name,
 		Description: a.Description,
 		Category:    a.Category.Int(),
+		UpdatedAt:   a.UpdatedAt,
 		CategoryStr: a.Category.String(),
 		IsCustom:    a.IsCustom(),
 		CreatedAt:   a.CreatedAt,
@@ -69,16 +69,4 @@ func userAllergyToDTO(a *entities.UserAllergy) dto.UserAllergyDTO {
 	}
 
 	return d
-}
-
-// severityFromInt16 is kept here so handlers/user_allergy.go can share it.
-func severityFromInt16(v *int16) (*valueobjects.AllergySeverity, error) {
-	if v == nil {
-		return nil, nil
-	}
-	s, err := valueobjects.NewAllergySeverity(*v)
-	if err != nil {
-		return nil, err
-	}
-	return &s, nil
 }

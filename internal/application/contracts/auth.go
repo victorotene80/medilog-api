@@ -31,5 +31,10 @@ type AuthService interface {
 	//   - session does not exist
 	//   - session is revoked/expired
 	Authenticate(ctx context.Context, accessToken string) (AuthContext, error)
+	// CheckUserActive verifies the account is usable but does NOT require
+	// onboarding. Use it for endpoints the user must reach in order to finish
+	// onboarding; CheckUserAccess would lock them out of those.
+	CheckUserActive(ctx context.Context, userID int64) error
 	CheckUserAccess(ctx context.Context, userID int64) error
+	CheckAdminAccess(ctx context.Context, userID int64) error
 }

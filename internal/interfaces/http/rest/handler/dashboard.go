@@ -32,13 +32,12 @@ func NewDashboardHandler(
 //	@Produce     json
 //	@Security    BearerAuth
 //	@Success     200 {object} response.APIResponse[response.DashboardResponse]
-//	@Failure     401 {object} response.APIResponse[struct{}]
-//	@Failure     404 {object} response.APIResponse[struct{}]
+//	@Failure     401 {object} response.APIResponse[response.EmptyData]
+//	@Failure     404 {object} response.APIResponse[response.EmptyData]
 //	@Router      /dashboard [get]
 func (h *DashboardHandler) GetDashboard(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
@@ -49,7 +48,7 @@ func (h *DashboardHandler) GetDashboard(w http.ResponseWriter, r *http.Request) 
 		q,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "DASHBOARD_FETCH_FAILED", "Could not fetch dashboard", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "DASHBOARD_FETCH_FAILED", "Could not fetch dashboard", err)
 		return
 	}
 	if result == nil {

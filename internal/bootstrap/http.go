@@ -1,10 +1,9 @@
 package bootstrap
 
 import (
-	"net/http"
-
 	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 
 	"github.com/victorotene80/medilog-api/internal/application/messaging"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/victorotene80/medilog-api/internal/interfaces/http/rest"
 	restHandler "github.com/victorotene80/medilog-api/internal/interfaces/http/rest/handler"
 	appmw "github.com/victorotene80/medilog-api/internal/interfaces/middleware"
+	"github.com/victorotene80/medilog-api/internal/shared/config"
 )
 
 func initializeHTTP(
@@ -21,8 +21,10 @@ func initializeHTTP(
 	logger *zap.Logger,
 	authSvc appContracts.AuthService,
 	redisClient *redis.Client,
-
-) http.Handler {
+	db *gorm.DB,
+	telemetryEnabled bool,
+	cfg *config.Config,
+) *rest.Router {
 	validate := validation.NewPlaygroundValidator()
 
 	//  Auth handlers
@@ -46,19 +48,41 @@ func initializeHTTP(
 	referenceHandler := restHandler.NewReferenceHandler(commandBus, validate)
 	scanHandler := restHandler.NewScanHandler(commandBus, validate)
 
+	//  Support handlers
+	supportTicketHandler := restHandler.NewSupportTicketHandler(commandBus, validate)
+
+	//  Feedback handlers
+	feedbackHandler := restHandler.NewFeedbackHandler(commandBus, validate)
+
+	//  Notification handlers
+	notificationHandler := restHandler.NewNotificationHandler(commandBus, validate)
+
+	//  Audit log handlers
+	auditLogHandler := restHandler.NewAuditLogHandler(commandBus, validate)
+
+	//  Health handlers
+	healthHandler := restHandler.NewHealthHandler(db, redisClient)
+
 	authMiddleware := appmw.NewAuthMiddleware(authSvc, logger)
+	adminMiddleware := appmw.NewAdminMiddleware(authSvc, logger)
 	rateLimiter := appmw.NewRateLimiter(redisClient, logger)
 
-	// Telemetry middleware — COMMENTED OUT
-	// telemetryMiddleware, err := appmw.NewTelemetryMiddleware()
-	// if err != nil {
-	// 	log.Fatalf("failed to create telemetry middleware: %v", err)
-	// }
+	var telemetryMiddleware *appmw.TelemetryMiddleware
+	if telemetryEnabled {
+		tm, err := appmw.NewTelemetryMiddleware()
+		if err != nil {
+			logger.Fatal("failed to create telemetry middleware", zap.Error(err))
+		}
+		telemetryMiddleware = tm
+	}
 
 	router := rest.NewRouter(
 		logger,
 		authMiddleware,
+		adminMiddleware,
 		rateLimiter,
+		telemetryMiddleware,
+		cfg.HTTP.CORSOrigins,
 		authHandler,
 		otpHandler,
 		userHandler,
@@ -72,7 +96,14 @@ func initializeHTTP(
 		scanHandler,
 		funFactHandler,
 		dashboardHandler,
+		supportTicketHandler,
+		feedbackHandler,
+		notificationHandler,
+		auditLogHandler,
+		healthHandler,
+		cfg.App.IsLive,
 	)
 
-	return router.Setup()
+	router.Setup()
+	return router
 }

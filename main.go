@@ -1,18 +1,25 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/joho/godotenv"
 
+	_ "github.com/victorotene80/medilog-api/docs"
 	"github.com/victorotene80/medilog-api/internal/bootstrap"
 )
 
 // @title			MediLog API
 // @version		1.0
 // @description	HTTP API for MediLog authentication, health records, medication tracking, AI conversations, drug verification, and reference data.
+// @host			localhost:8080
+// @schemes		http
 // @BasePath		/api/v1
 // @securityDefinitions.apikey	BearerAuth
 // @in							header
@@ -36,6 +43,27 @@ func main() {
 		IdleTimeout:  120 * time.Second,
 	}
 
-	log.Println("Server running on :8080")
-	log.Fatal(server.ListenAndServe())
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		log.Println("Server running on :8080")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	log.Println("Shutdown signal received, starting graceful shutdown...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Printf("HTTP server shutdown error: %v", err)
+	}
+
+	app.Stop()
+	app.Close()
+	log.Println("Server stopped")
 }

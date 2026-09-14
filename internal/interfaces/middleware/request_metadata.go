@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"net"
 	"net/http"
-	"strings"
 
 	chiMw "github.com/go-chi/chi/v5/middleware"
 
@@ -53,20 +52,6 @@ func RequestMetadata(next http.Handler) http.Handler {
 }
 
 func clientIP(r *http.Request) string {
-	if xRealIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); xRealIP != "" {
-		return xRealIP
-	}
-
-	if xForwardedFor := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); xForwardedFor != "" {
-		parts := strings.Split(xForwardedFor, ",")
-		if len(parts) > 0 {
-			ip := strings.TrimSpace(parts[0])
-			if ip != "" {
-				return ip
-			}
-		}
-	}
-
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr

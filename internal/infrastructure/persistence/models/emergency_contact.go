@@ -14,6 +14,7 @@ type EmergencyContactModel struct {
 	Name         string         `gorm:"column:name;not null"`
 	Relationship string         `gorm:"column:relationship;not null"`
 	Phone        string         `gorm:"column:phone;not null"`
+	CountryCode  string         `gorm:"column:country_code;not null"`
 	IsPrimary    bool           `gorm:"column:is_primary;not null;default:false"`
 	CreatedAt    time.Time      `gorm:"column:created_at"`
 	UpdatedAt    time.Time      `gorm:"column:updated_at"`
@@ -36,6 +37,7 @@ func EmergencyContactToEntity(m *EmergencyContactModel) *entities.EmergencyConta
 		Name:         m.Name,
 		Relationship: m.Relationship,
 		Phone:        m.Phone,
+		CountryCode:  m.CountryCode,
 		IsPrimary:    m.IsPrimary,
 		CreatedAt:    m.CreatedAt,
 		UpdatedAt:    m.UpdatedAt,
@@ -54,6 +56,7 @@ func EmergencyContactEntityToModel(e *entities.EmergencyContact) *EmergencyConta
 		Name:         e.Name,
 		Relationship: e.Relationship,
 		Phone:        e.Phone,
+		CountryCode:  e.CountryCode,
 		IsPrimary:    e.IsPrimary,
 		CreatedAt:    e.CreatedAt,
 		UpdatedAt:    e.UpdatedAt,

@@ -57,7 +57,7 @@ func (h *AllergyHandler) ListAllergies(w http.ResponseWriter, r *http.Request) {
 		h.commandBus, r.Context(), q,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "ALLERGIES_FETCH_FAILED", "Could not fetch allergies", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "ALLERGIES_FETCH_FAILED", "Could not fetch allergies", err)
 		return
 	}
 
@@ -73,8 +73,8 @@ func (h *AllergyHandler) ListAllergies(w http.ResponseWriter, r *http.Request) {
 //	@Accept      json
 //	@Produce     json
 //	@Param       body body request.AddAllergyRequest true "Allergy payload"
-//	@Success     201 {object} response.APIResponse[struct{}]
-//	@Failure     400 {object} response.APIResponse[struct{}]
+//	@Success     201 {object} response.APIResponse[response.EmptyData]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
 //	@Router      /reference/allergies/ [post]
 func (h *AllergyHandler) AddAllergy(w http.ResponseWriter, r *http.Request) {
 	req, ok := decodeAndValidate[request.AddAllergyRequest](w, r, h.validator)
@@ -90,7 +90,7 @@ func (h *AllergyHandler) AddAllergy(w http.ResponseWriter, r *http.Request) {
 
 	_, err := messaging.Execute[command.AllergyCommand, struct{}](h.commandBus, r.Context(), cmd)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "ALLERGY_CREATE_FAILED", "Could not create allergy", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "ALLERGY_CREATE_FAILED", "Could not create allergy", err)
 		return
 	}
 
@@ -106,9 +106,9 @@ func (h *AllergyHandler) AddAllergy(w http.ResponseWriter, r *http.Request) {
 //	@Produce     json
 //	@Param       id   path int                          true "Allergy ID"
 //	@Param       body body request.UpdateAllergyRequest true "Updated allergy payload"
-//	@Success     200 {object} response.APIResponse[struct{}]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     404 {object} response.APIResponse[struct{}]
+//	@Success     200 {object} response.APIResponse[response.EmptyData]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     404 {object} response.APIResponse[response.EmptyData]
 //	@Router      /reference/allergies/{id} [put]
 func (h *AllergyHandler) UpdateAllergy(w http.ResponseWriter, r *http.Request) {
 	id, err := parseIDParam(r, "id")
@@ -131,7 +131,7 @@ func (h *AllergyHandler) UpdateAllergy(w http.ResponseWriter, r *http.Request) {
 
 	_, err = messaging.Execute[command.UpdateAllergyCommand, struct{}](h.commandBus, r.Context(), cmd)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "ALLERGY_UPDATE_FAILED", "Could not update allergy", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "ALLERGY_UPDATE_FAILED", "Could not update allergy", err)
 		return
 	}
 
@@ -145,9 +145,9 @@ func (h *AllergyHandler) UpdateAllergy(w http.ResponseWriter, r *http.Request) {
 //	@Tags        Reference
 //	@Produce     json
 //	@Param       id path int true "Allergy ID"
-//	@Success     200 {object} response.APIResponse[struct{}]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     404 {object} response.APIResponse[struct{}]
+//	@Success     200 {object} response.APIResponse[response.EmptyData]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     404 {object} response.APIResponse[response.EmptyData]
 //	@Router      /reference/allergies/{id} [delete]
 func (h *AllergyHandler) DeleteAllergy(w http.ResponseWriter, r *http.Request) {
 	id, err := parseIDParam(r, "id")
@@ -160,7 +160,7 @@ func (h *AllergyHandler) DeleteAllergy(w http.ResponseWriter, r *http.Request) {
 
 	_, err = messaging.Execute[command.DeleteAllergyCommand, struct{}](h.commandBus, r.Context(), cmd)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "ALLERGY_DELETE_FAILED", "Could not delete allergy", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "ALLERGY_DELETE_FAILED", "Could not delete allergy", err)
 		return
 	}
 

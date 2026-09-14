@@ -3,8 +3,6 @@ package handler
 import (
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
@@ -39,9 +37,8 @@ func NewScanHandler(
 //	@Success     200 {object} response.APIResponse[response.DrugScanResponse]
 //	@Router      /drugs/verify [post]
 func (h *ScanHandler) VerifyDrug(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
@@ -62,7 +59,7 @@ func (h *ScanHandler) VerifyDrug(w http.ResponseWriter, r *http.Request) {
 		h.commandBus, r.Context(), cmd,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "DRUG_VERIFY_FAILED", "Could not verify drug", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "DRUG_VERIFY_FAILED", "Could not verify drug", err)
 		return
 	}
 
@@ -79,9 +76,8 @@ func (h *ScanHandler) VerifyDrug(w http.ResponseWriter, r *http.Request) {
 //	@Success     200 {object} response.APIResponse[[]response.DrugScanResponse]
 //	@Router      /drugs/scans [get]
 func (h *ScanHandler) ListDrugScans(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
@@ -91,7 +87,7 @@ func (h *ScanHandler) ListDrugScans(w http.ResponseWriter, r *http.Request) {
 		h.commandBus, r.Context(), q,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "SCANS_FETCH_FAILED", "Could not fetch scan history", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "SCANS_FETCH_FAILED", "Could not fetch scan history", err)
 		return
 	}
 
@@ -109,15 +105,13 @@ func (h *ScanHandler) ListDrugScans(w http.ResponseWriter, r *http.Request) {
 //	@Success     200 {object} response.APIResponse[response.DrugScanResponse]
 //	@Router      /drugs/scans/{publicId} [get]
 func (h *ScanHandler) GetDrugScan(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
-	publicID := chi.URLParam(r, "publicId")
-	if publicID == "" {
-		response.Error(w, http.StatusBadRequest, "INVALID_ID", "Scan public ID is required", nil)
+	publicID, ok := publicIDParam(w, r, "publicId", "Scan public ID is required")
+	if !ok {
 		return
 	}
 
@@ -127,7 +121,7 @@ func (h *ScanHandler) GetDrugScan(w http.ResponseWriter, r *http.Request) {
 		h.commandBus, r.Context(), q,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "SCAN_FETCH_FAILED", "Could not fetch scan", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "SCAN_FETCH_FAILED", "Could not fetch scan", err)
 		return
 	}
 	if result == nil {

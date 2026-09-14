@@ -4,9 +4,12 @@ import (
 	"context"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence/models"
 	"gorm.io/gorm"
 )
+
+var _ repository.AIMessageRepository = (*AIMessageRepository)(nil)
 
 type AIMessageRepository struct {
 	db *gorm.DB
@@ -18,7 +21,7 @@ func NewAIMessageRepository(db *gorm.DB) *AIMessageRepository {
 
 func (r *AIMessageRepository) FindByConversationID(ctx context.Context, conversationID int64) ([]*entities.AIMessage, error) {
 	var ms []models.AIMessageModel
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("conversation_id = ?", conversationID).
 		Order("created_at ASC").
 		Find(&ms).Error; err != nil {
@@ -29,7 +32,7 @@ func (r *AIMessageRepository) FindByConversationID(ctx context.Context, conversa
 
 func (r *AIMessageRepository) FindByConversationIDSince(ctx context.Context, conversationID, afterMessageID int64) ([]*entities.AIMessage, error) {
 	var ms []models.AIMessageModel
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("conversation_id = ? AND id > ?", conversationID, afterMessageID).
 		Order("created_at ASC").
 		Find(&ms).Error; err != nil {
@@ -40,7 +43,7 @@ func (r *AIMessageRepository) FindByConversationIDSince(ctx context.Context, con
 
 func (r *AIMessageRepository) Save(ctx context.Context, msg *entities.AIMessage) error {
 	m := models.AIMessageToModel(msg)
-	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
+	if err := conn(ctx, r.db).Create(m).Error; err != nil {
 		return err
 	}
 	msg.ID = m.ID
@@ -52,7 +55,7 @@ func (r *AIMessageRepository) SaveAll(ctx context.Context, msgs []*entities.AIMe
 	for i, msg := range msgs {
 		ms[i] = *models.AIMessageToModel(msg)
 	}
-	if err := r.db.WithContext(ctx).Create(&ms).Error; err != nil {
+	if err := conn(ctx, r.db).Create(&ms).Error; err != nil {
 		return err
 	}
 	for i, m := range ms {

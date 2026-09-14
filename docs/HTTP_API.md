@@ -18,33 +18,30 @@ Protected endpoints require:
 Authorization: Bearer <access_token>
 ```
 
-Optional device metadata headers are supported by auth and rate-limit flows:
+Optional device metadata headers are supported by auth flows:
 
 ```http
 X-Device-ID: ios-device-001
 X-Device-Name: iPhone 15
-X-Device-Fingerprint: demo-fingerprint
 ```
 
 JSON responses use the shared envelope:
 
 ```json
 {
-  "status": true,
-  "code": "MACHINE_READABLE_CODE",
+  "status": "success",
   "message": "Human readable message",
   "data": {}
 }
 ```
 
-Error responses use the same envelope with `status: false`:
+Error responses use the same envelope with `status: "error"`:
 
 ```json
 {
-  "status": false,
-  "code": "VALIDATION_ERROR",
+  "status": "error",
   "message": "One or more fields are invalid",
-  "errors": "validation error details"
+  "errors": null
 }
 ```
 
@@ -52,23 +49,23 @@ Common errors:
 
 | HTTP status | Code | Meaning |
 | --- | --- | --- |
-| `400` | `INVALID_REQUEST_BODY` | Invalid JSON payload or unknown JSON fields. |
+| `400` | `INVALID_REQUEST` | Invalid JSON payload or unknown JSON fields. |
 | `400` | `VALIDATION_ERROR` | Request fields failed validation. |
-| `401` | `UNAUTHORIZED` or `UNAUTHENTICATED` | Token is missing, malformed, invalid, expired, or session context is missing. |
-| `403` | `VERIFICATION_REQUIRED` | Account verification is required. |
-| `403` | `ONBOARDING_REQUIRED` | Onboarding must be completed. |
-| `403` | `ACCOUNT_NOT_ALLOWED` | Account is locked or blocked from access. |
-| `429` | `RATE_LIMIT_EXCEEDED` | Too many requests. |
-| `500` | `INTERNAL_SERVER_ERROR` | Unexpected server failure. |
+| `401` | `UNAUTHORIZED` | Token is missing, malformed, invalid, expired, or session context is missing. |
+| `403` | `FORBIDDEN` | Account verification/onboarding is required, or role lacks permission. |
+| `429` | `RATE_LIMITED` | Too many requests. |
+| `500` | `INTERNAL_ERROR` | Unexpected server failure. |
 
 ## Route Access
 
 Public endpoints do not require auth. Pre-onboarding endpoints require auth but do not require onboarding completion. Full app endpoints require both auth and completed onboarding.
 
+`POST /api/v1/feedback` is public so that a user who cannot sign in or finish onboarding can still report the problem. A bearer token is optional there: when one is sent it must be valid, and the feedback is attributed to that user; otherwise the feedback is stored anonymously.
+
 | Method | Path | Access |
 | --- | --- | --- |
 | `GET` | `/health` | Public |
-| `GET` | `/metrics` | Public |
+| `GET` | `/metrics` | Auth |
 | `POST` | `/api/v1/auth/register` | Public |
 | `POST` | `/api/v1/auth/login` | Public |
 | `POST` | `/api/v1/auth/google` | Public |
@@ -79,20 +76,31 @@ Public endpoints do not require auth. Pre-onboarding endpoints require auth but 
 | `POST` | `/api/v1/auth/otp/verify-onboarding` | Public |
 | `POST` | `/api/v1/auth/logout` | Auth |
 | `POST` | `/api/v1/auth/change-password` | Auth |
+| `DELETE` | `/api/v1/users/me` | Auth |
+| `POST` | `/api/v1/auth/refresh` | Public |
 | `GET` | `/api/v1/reference/countries` | Public |
 | `GET` | `/api/v1/reference/allergies/` | Public |
-| `POST` | `/api/v1/reference/allergies/` | Auth |
-| `PUT` | `/api/v1/reference/allergies/{id}` | Auth |
-| `DELETE` | `/api/v1/reference/allergies/{id}` | Auth |
+| `POST` | `/api/v1/reference/allergies/` | Admin |
+| `PUT` | `/api/v1/reference/allergies/{id}` | Admin |
+| `DELETE` | `/api/v1/reference/allergies/{id}` | Admin |
 | `GET` | `/api/v1/reference/fun-facts/` | Public |
 | `GET` | `/api/v1/reference/fun-facts/{id}` | Public |
-| `POST` | `/api/v1/reference/fun-facts/` | Auth |
-| `PUT` | `/api/v1/reference/fun-facts/{id}` | Auth |
-| `DELETE` | `/api/v1/reference/fun-facts/{id}` | Auth |
+| `POST` | `/api/v1/reference/fun-facts/` | Admin |
+| `PUT` | `/api/v1/reference/fun-facts/{id}` | Admin |
+| `DELETE` | `/api/v1/reference/fun-facts/{id}` | Admin |
 | `GET` | `/api/v1/users/me` | Auth |
-| `POST` | `/api/v1/emergency-contacts/` | Auth |
+| `PATCH` | `/api/v1/users/me` | Auth |
+| `GET` | `/api/v1/users/me/notification-preferences` | Auth |
+| `PATCH` | `/api/v1/users/me/notification-preferences` | Auth |
+| `GET` | `/api/v1/emergency-contacts/` | Active |
+| `POST` | `/api/v1/emergency-contacts/` | Active |
+| `PUT` | `/api/v1/emergency-contacts/{publicId}` | Active |
+| `DELETE` | `/api/v1/emergency-contacts/{publicId}` | Active |
+| `POST` | `/api/v1/feedback` | Public |
+| `GET` | `/api/v1/feedback/{feedbackId}` | Full app |
 | `GET` | `/api/v1/health/allergies/` | Full app |
 | `POST` | `/api/v1/health/allergies/` | Full app |
+| `PUT` | `/api/v1/health/allergies/{publicId}` | Full app |
 | `DELETE` | `/api/v1/health/allergies/{publicId}` | Full app |
 | `GET` | `/api/v1/medications/` | Full app |
 | `POST` | `/api/v1/medications/` | Full app |
@@ -123,13 +131,18 @@ Rate limiting is configured for auth and OTP routes:
 | Endpoint | Limit |
 | --- | --- |
 | `POST /api/v1/auth/register` | 30 per IP per hour, and 10 per IP plus email/phone per hour |
-| `POST /api/v1/auth/login` | 5 per IP plus device plus email/phone per 10 minutes |
-| `POST /api/v1/auth/google` | 10 per IP plus device per 10 minutes |
+| `POST /api/v1/auth/login` | 5 per IP plus email/phone per 10 minutes |
+| `POST /api/v1/auth/login-otp` | 5 per IP plus recipient per 10 minutes |
+| `POST /api/v1/auth/refresh` | 30 per IP per hour |
+| `POST /api/v1/auth/google` | 10 per IP per 10 minutes |
 | `POST /api/v1/auth/forgot-password` | 3 per IP plus recipient per 10 minutes |
 | `POST /api/v1/auth/reset-password` | 5 per IP plus recipient per 15 minutes |
 | `POST /api/v1/auth/otp/request` | 50 per IP plus recipient plus purpose per 10 minutes |
 | `POST /api/v1/auth/otp/verify` | 5 per IP plus recipient plus purpose per 10 minutes |
-| `POST /api/v1/auth/otp/verify-onboarding` | 5 per IP plus device plus recipient plus purpose per 10 minutes |
+| `POST /api/v1/auth/otp/verify-onboarding` | 5 per IP plus recipient plus purpose per 10 minutes |
+| `DELETE /api/v1/users/me` | 3 per IP plus identity per 10 minutes |
+| `GET /api/v1/reference/*` | 100 per IP per minute |
+| `POST /api/v1/feedback` | 5 per IP per hour |
 
 ## Health
 
@@ -252,6 +265,49 @@ Request:
 Success: `200 OK`, code `GOOGLE_AUTH_SUCCESS`.
 
 Existing-user response data may include tokens. New-user response data may include `status: "REGISTER"`, `google_id`, `picture_url`, and profile fields.
+
+### `POST /api/v1/auth/login-otp`
+
+Logs in via OTP (useful for passwordless login).
+
+Request:
+
+```json
+{
+  "recipient": "+2348012345678",
+  "code": "123456",
+  "channel": "sms"
+}
+```
+
+Success: `200 OK`, code `LOGIN_OTP_SUCCESS`.
+
+Response data includes tokens:
+
+```json
+{
+  "access_token": "<access_token>",
+  "access_token_expires_at": "2026-05-30T12:15:00Z",
+  "refresh_token": "<refresh_token>",
+  "refresh_token_expires_at": "2026-06-06T12:00:00Z"
+}
+```
+
+### `POST /api/v1/auth/refresh`
+
+Refreshes an expired access token using a valid refresh token.
+
+Request:
+
+```json
+{
+  "refresh_token": "<refresh_token>"
+}
+```
+
+Success: `200 OK`, code `REFRESH_SUCCESS`.
+
+Response data includes fresh tokens.
 
 ### `POST /api/v1/auth/forgot-password`
 
@@ -533,6 +589,23 @@ Auth: yes
 Success: `200 OK`, code `USER_FETCHED`.
 
 Response data includes profile fields plus optional `emergency_contact`.
+
+### `DELETE /api/v1/users/me`
+
+Schedules the authenticated user's account for deletion (soft delete). Requires verification via OTP.
+
+Auth: yes
+
+Request:
+
+```json
+{
+  "recipient": "+2348012345678",
+  "otp_code": "123456"
+}
+```
+
+Success: `200 OK`, code `ACCOUNT_DELETED`.
 
 ### `POST /api/v1/emergency-contacts/`
 
@@ -919,7 +992,7 @@ Response data shape:
       "total": 0
     },
     "flagged_drugs": {
-      "completed": 0,
+      "flagged": 0,
       "total": 0
     }
   },
@@ -977,3 +1050,99 @@ curl -X POST "http://localhost:8080/api/v1/drugs/verify" \
     "country_code": "NG"
   }'
 ```
+
+
+---
+
+## Notifications
+
+These routes have existed for some time but were previously undocumented, which
+led to them being treated as missing. They are listed here explicitly.
+
+| Verb | Path | Access |
+|---|---|---|
+| `GET` | `/api/v1/notifications` | Full app |
+| `GET` | `/api/v1/notifications/{notificationId}` | Full app |
+| `PATCH` | `/api/v1/notifications/{notificationId}/read` | Full app |
+| `PATCH` | `/api/v1/notifications/read-all` | Full app |
+
+`{notificationId}` is the notification's **public UUID** — the same value the
+list endpoint returns as `id`. A value that is not a UUID returns `400`; a
+well-formed but unknown one returns `404`.
+
+The inbox is populated by the reminder scheduler (see below). Before that
+scheduler is enabled it returns an empty list, because nothing writes
+notifications.
+
+### Reminder scheduler
+
+A background ticker generates medication and appointment reminders and writes
+them to the inbox. There is no push transport — clients poll `GET
+/api/v1/notifications`.
+
+It is **disabled by default**; enabling it starts writing notifications, which
+is a deliberate operational decision.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SCHEDULER_ENABLED` | `false` | Master switch |
+| `SCHEDULER_POLL_INTERVAL` | `1m` | Tick interval. Reminder granularity is HH:MM, so faster buys nothing |
+| `SCHEDULER_CATCHUP_WINDOW` | `6h` | How far back each tick looks; this *is* the catch-up mechanism. Clamped to 24h so a long outage cannot flood an inbox |
+| `SCHEDULER_LEAD_TIME` | `5m` | How far ahead to generate |
+| `SCHEDULER_BATCH_SIZE` | `500` | Rows scanned per page |
+
+Reminders are keyed by `(user_id, dedupe_key)`, where the key is scoped to the
+user's **local** day (`med:{medication_id}:{medication_time_id}:{YYYY-MM-DD}`).
+Re-running over an overlapping window therefore never duplicates, and a
+reminder the user deletes is not regenerated.
+
+Which reminders are produced is governed by the per-user flags on
+`GET/PATCH /api/v1/users/me/notification-preferences`, and by that endpoint's
+`timezone` (an IANA name such as `Africa/Lagos`, defaulting to `UTC`).
+
+**`refill_reminders_enabled` is stored and honoured but currently generates
+nothing** — `medications` has no quantity, days-supply or refill-date column to
+compute a refill date from. Clients should not present it as functional.
+
+---
+
+## AI quota
+
+| Verb | Path | Access |
+|---|---|---|
+| `GET` | `/api/v1/ai/quota` | Full app |
+
+```json
+{ "used": 3, "total": 10, "remaining": 7, "is_pro": false,
+  "resets_at": "2026-09-09T00:00:00Z" }
+```
+
+The same object is embedded as `quota` in the `POST
+/api/v1/ai/conversations/{publicId}/messages` response, so a client does not
+need a second round-trip per chat turn.
+
+The window is **daily, reset lazily at UTC midnight** on both the read and send
+paths — no scheduler is involved. UTC rather than the user's local midnight is
+deliberate: this is an abuse control, and a per-user window would hand someone
+crossing timezones two resets inside 24 hours.
+
+**Exhausting the quota returns `402 Payment Required`, not `429`.** `429` means
+"you are sending too fast, retry shortly" (the per-IP rate limiter); `402` means
+"your allowance is spent until it resets, or upgrade". Clients need different UI
+for the two, so they are different statuses.
+
+---
+
+## Profile updates
+
+`PATCH /api/v1/users/me` accepts `first_name`, `last_name`, `dob`, `sex`,
+`blood_type`, `avatar_url`, `country_code`, `height`, `weight`, `weight_unit`
+and `temperature_unit`. Omitted fields are left unchanged; the response is the
+same shape as `GET /api/v1/users/me`.
+
+`email` and `phone` are **not** accepted — changing either requires OTP
+re-verification and keeps its existing flow. Unknown fields are rejected, so
+sending `email` returns `400` rather than being silently ignored.
+
+Because every field is optional, there is no way to *clear* a nullable field
+through this endpoint: `{"avatar_url": null}` means "no change".

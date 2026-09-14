@@ -13,6 +13,7 @@ import (
 	"github.com/victorotene80/medilog-api/internal/domain/aggregates"
 	"github.com/victorotene80/medilog-api/internal/domain/contracts"
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/events"
 	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/shared/requestmeta"
 )
@@ -24,6 +25,7 @@ type GoogleAuthHandler struct {
 	googleService    appContracts.GoogleAuthService
 	sessionService   appContracts.SessionService
 	eventPublisher   appContracts.MessagePublisher
+	tx               appContracts.TransactionManager
 	clock            func() time.Time
 }
 
@@ -34,6 +36,7 @@ func NewGoogleAuthHandler(
 	googleService appContracts.GoogleAuthService,
 	sessionService appContracts.SessionService,
 	eventPublisher appContracts.MessagePublisher,
+	tx appContracts.TransactionManager,
 	clock func() time.Time,
 ) *GoogleAuthHandler {
 	return &GoogleAuthHandler{
@@ -43,6 +46,7 @@ func NewGoogleAuthHandler(
 		googleService:    googleService,
 		sessionService:   sessionService,
 		eventPublisher:   eventPublisher,
+		tx:               tx,
 		clock:            clock,
 	}
 }
@@ -123,7 +127,8 @@ func (h *GoogleAuthHandler) Handle(
 
 		h.publishEvent(
 			ctx,
-			"auth.user.google-linked.v1",
+			nil,
+			messaging.EventUserGoogleLinked,
 			"google-link",
 			existingUser.ID,
 			meta,
@@ -145,29 +150,44 @@ func (h *GoogleAuthHandler) Handle(
 
 	agg := aggregates.NewUserAggregate(user)
 
-	if err := h.userAggregate.Save(ctx, agg); err != nil {
+	// The user, its auth-provider link and the user.created outbox row commit
+	// together. Previously each ran on its own connection, so a failure creating
+	// the provider link left a user who could never sign in again — the account
+	// exists, so the next attempt takes the login path and finds no linked
+	// provider.
+	if err := h.tx.Do(ctx, func(ctx context.Context) error {
+		if err := h.userAggregate.Save(ctx, agg); err != nil {
+			return err
+		}
+
+		// Raised after Save so the event carries the ID the database assigned.
+		agg.RaiseCreatedEvent()
+
+		provider := entities.NewUserAuthProvider(
+			agg.User.ID,
+			"google",
+			googleID,
+			&email,
+			true,
+		)
+
+		if err := h.authProviderRepo.Create(ctx, provider); err != nil {
+			return err
+		}
+
+		h.publishEvent(
+			ctx,
+			agg.PullEvents(),
+			messaging.EventUserGoogleCreated,
+			"google-register",
+			agg.User.ID,
+			meta,
+		)
+
+		return nil
+	}); err != nil {
 		return nil, err
 	}
-
-	provider := entities.NewUserAuthProvider(
-		agg.User.ID,
-		"google",
-		googleID,
-		&email,
-		true,
-	)
-
-	if err := h.authProviderRepo.Create(ctx, provider); err != nil {
-		return nil, err
-	}
-
-	h.publishEvent(
-		ctx,
-		"auth.user.google-created.v1",
-		"google-register",
-		agg.User.ID,
-		meta,
-	)
 
 	return h.loginExistingUser(ctx, agg.User, googleUser.PictureURL, meta, now)
 }
@@ -250,8 +270,14 @@ func (h *GoogleAuthHandler) createSession(
 	}, nil
 }
 
+// publishEvent writes the aggregate's pending domain events to the outbox under
+// the given wire name. domainEvents may be empty for a pure integration signal;
+// it must not be nil when the aggregate has raised something, because
+// outbox.Publisher.Publish iterates the slice and a nil slice writes no rows —
+// which is how Google signup produced no user.created event at all.
 func (h *GoogleAuthHandler) publishEvent(
 	ctx context.Context,
+	domainEvents []events.DomainEvent,
 	name string,
 	action string,
 	userID int64,
@@ -271,7 +297,7 @@ func (h *GoogleAuthHandler) publishEvent(
 		DeviceID:      &meta.DeviceID,
 	}
 
-	_ = h.eventPublisher.Publish(ctx, nil, eventMeta.ToMetadata())
+	_ = h.eventPublisher.Publish(ctx, domainEvents, eventMeta.ToMetadata())
 }
 
 func resolveGoogleName(first string, last string, full string) (string, string) {

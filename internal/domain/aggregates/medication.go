@@ -2,6 +2,7 @@ package aggregates
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
@@ -116,11 +117,11 @@ func (a *MedicationAggregate) LogAdherence(log *entities.MedicationAdherenceLog)
 
 	a.AdherenceLogs = append(a.AdherenceLogs, log)
 
-	/*a.RaiseEvent(types.NewMedicationAdherenceLoggedEvent(
+	a.RaiseEvent(types.NewMedicationAdherenceLoggedEvent(
 		a.Medication.UserID,
 		a.Medication.ID,
-		log.Status.String(),
-	))*/
+		fmt.Sprintf("%d", log.Status.Int()),
+	))
 
 	return nil
 }

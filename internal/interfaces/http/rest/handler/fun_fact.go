@@ -29,16 +29,17 @@ func NewFunFactHandler(
 // ListFunFacts godoc
 //
 //	@Summary     List fun facts
-//	@Description Returns fun facts, optionally limited to active facts.
+//	@Description Returns the published (active) fun facts.
 //	@Tags        Reference
 //	@Produce     json
-//	@Param       active_only query bool false "Return only active fun facts"
 //	@Success     200 {object} response.APIResponse[[]response.FunFactResponse]
-//	@Failure     500 {object} response.APIResponse[struct{}]
+//	@Failure     500 {object} response.APIResponse[response.EmptyData]
 //	@Router      /reference/fun-facts/ [get]
 func (h *FunFactHandler) ListFunFacts(w http.ResponseWriter, r *http.Request) {
-	activeOnly := r.URL.Query().Get("active_only") == "true"
-	q := query.ListFunFactsQuery{ActiveOnly: activeOnly}
+	// This route is public and unauthenticated, so it serves published facts
+	// only. The previous active_only default of false let any anonymous caller
+	// read facts an admin had retracted.
+	q := query.ListFunFactsQuery{ActiveOnly: true}
 
 	result, err := messaging.Execute[query.ListFunFactsQuery, []dto.FunFactDTO](
 		h.commandBus,
@@ -46,7 +47,7 @@ func (h *FunFactHandler) ListFunFacts(w http.ResponseWriter, r *http.Request) {
 		q,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "FUN_FACTS_FETCH_FAILED", "Could not fetch fun facts", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "FUN_FACTS_FETCH_FAILED", "Could not fetch fun facts", err)
 		return
 	}
 
@@ -62,8 +63,8 @@ func (h *FunFactHandler) ListFunFacts(w http.ResponseWriter, r *http.Request) {
 //	@Produce     json
 //	@Param       id path int true "Fun fact ID"
 //	@Success     200 {object} response.APIResponse[response.FunFactResponse]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     404 {object} response.APIResponse[struct{}]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     404 {object} response.APIResponse[response.EmptyData]
 //	@Router      /reference/fun-facts/{id} [get]
 func (h *FunFactHandler) GetFunFact(w http.ResponseWriter, r *http.Request) {
 	id, err := parseIDParam(r, "id")
@@ -75,7 +76,7 @@ func (h *FunFactHandler) GetFunFact(w http.ResponseWriter, r *http.Request) {
 	q := query.GetFunFactQuery{ID: id}
 	result, err := messaging.Execute[query.GetFunFactQuery, *dto.FunFactDTO](h.commandBus, r.Context(), q)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "FUN_FACT_FETCH_FAILED", "Could not fetch fun fact", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "FUN_FACT_FETCH_FAILED", "Could not fetch fun fact", err)
 		return
 	}
 	if result == nil {
@@ -96,9 +97,9 @@ func (h *FunFactHandler) GetFunFact(w http.ResponseWriter, r *http.Request) {
 //	@Produce     json
 //	@Security    BearerAuth
 //	@Param       body body request.CreateFunFactRequest true "Fun fact payload"
-//	@Success     201 {object} response.APIResponse[struct{}]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     401 {object} response.APIResponse[struct{}]
+//	@Success     201 {object} response.APIResponse[response.EmptyData]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     401 {object} response.APIResponse[response.EmptyData]
 //	@Router      /reference/fun-facts/ [post]
 func (h *FunFactHandler) CreateFunFact(w http.ResponseWriter, r *http.Request) {
 	req, ok := decodeAndValidate[request.CreateFunFactRequest](w, r, h.validator)
@@ -119,7 +120,7 @@ func (h *FunFactHandler) CreateFunFact(w http.ResponseWriter, r *http.Request) {
 
 	_, err := messaging.Execute[command.CreateFunFactCommand, struct{}](h.commandBus, r.Context(), cmd)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "FUN_FACT_CREATE_FAILED", "Could not create fun fact", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "FUN_FACT_CREATE_FAILED", "Could not create fun fact", err)
 		return
 	}
 
@@ -136,10 +137,10 @@ func (h *FunFactHandler) CreateFunFact(w http.ResponseWriter, r *http.Request) {
 //	@Security    BearerAuth
 //	@Param       id   path int                          true "Fun fact ID"
 //	@Param       body body request.UpdateFunFactRequest true "Updated fun fact payload"
-//	@Success     200 {object} response.APIResponse[struct{}]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     401 {object} response.APIResponse[struct{}]
-//	@Failure     404 {object} response.APIResponse[struct{}]
+//	@Success     200 {object} response.APIResponse[response.EmptyData]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     401 {object} response.APIResponse[response.EmptyData]
+//	@Failure     404 {object} response.APIResponse[response.EmptyData]
 //	@Router      /reference/fun-facts/{id} [put]
 func (h *FunFactHandler) UpdateFunFact(w http.ResponseWriter, r *http.Request) {
 	id, err := parseIDParam(r, "id")
@@ -167,7 +168,7 @@ func (h *FunFactHandler) UpdateFunFact(w http.ResponseWriter, r *http.Request) {
 
 	_, err = messaging.Execute[command.UpdateFunFactCommand, struct{}](h.commandBus, r.Context(), cmd)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "FUN_FACT_UPDATE_FAILED", "Could not update fun fact", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "FUN_FACT_UPDATE_FAILED", "Could not update fun fact", err)
 		return
 	}
 
@@ -182,10 +183,10 @@ func (h *FunFactHandler) UpdateFunFact(w http.ResponseWriter, r *http.Request) {
 //	@Produce     json
 //	@Security    BearerAuth
 //	@Param       id path int true "Fun fact ID"
-//	@Success     200 {object} response.APIResponse[struct{}]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     401 {object} response.APIResponse[struct{}]
-//	@Failure     404 {object} response.APIResponse[struct{}]
+//	@Success     200 {object} response.APIResponse[response.EmptyData]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     401 {object} response.APIResponse[response.EmptyData]
+//	@Failure     404 {object} response.APIResponse[response.EmptyData]
 //	@Router      /reference/fun-facts/{id} [delete]
 func (h *FunFactHandler) DeleteFunFact(w http.ResponseWriter, r *http.Request) {
 	id, err := parseIDParam(r, "id")
@@ -197,7 +198,7 @@ func (h *FunFactHandler) DeleteFunFact(w http.ResponseWriter, r *http.Request) {
 	cmd := command.DeleteFunFactCommand{ID: id}
 	_, err = messaging.Execute[command.DeleteFunFactCommand, struct{}](h.commandBus, r.Context(), cmd)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "FUN_FACT_DELETE_FAILED", "Could not delete fun fact", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "FUN_FACT_DELETE_FAILED", "Could not delete fun fact", err)
 		return
 	}
 

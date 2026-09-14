@@ -33,7 +33,7 @@ func (r *UserRepository) FindByID(
 ) (*entities.User, error) {
 	var model models.UserModel
 
-	err := r.db.WithContext(ctx).
+	err := conn(ctx, r.db).
 		Where("id = ? AND deleted_at IS NULL", id).
 		First(&model).Error
 
@@ -54,7 +54,7 @@ func (r *UserRepository) FindByEmail(
 ) (*entities.User, error) {
 	var model models.UserModel
 
-	err := r.db.WithContext(ctx).
+	err := conn(ctx, r.db).
 		Where("email = ? AND deleted_at IS NULL", email).
 		First(&model).Error
 
@@ -75,7 +75,7 @@ func (r *UserRepository) FindByPhone(
 ) (*entities.User, error) {
 	var model models.UserModel
 
-	err := r.db.WithContext(ctx).
+	err := conn(ctx, r.db).
 		Where("phone = ? AND deleted_at IS NULL", phone).
 		First(&model).Error
 
@@ -96,7 +96,7 @@ func (r *UserRepository) ExistsByEmail(
 ) (bool, error) {
 	var count int64
 
-	err := r.db.WithContext(ctx).
+	err := conn(ctx, r.db).
 		Model(&models.UserModel{}).
 		Where("email = ? AND deleted_at IS NULL", email).
 		Count(&count).Error
@@ -114,7 +114,7 @@ func (r *UserRepository) ExistsByPhone(
 ) (bool, error) {
 	var count int64
 
-	err := r.db.WithContext(ctx).
+	err := conn(ctx, r.db).
 		Model(&models.UserModel{}).
 		Where("phone = ? AND deleted_at IS NULL", phone).
 		Count(&count).Error
@@ -136,7 +136,7 @@ func (r *UserRepository) Create(
 
 	model := models.UserEntityToModel(*user)
 
-	err := r.db.WithContext(ctx).
+	err := conn(ctx, r.db).
 		Create(model).Error
 
 	if err != nil {
@@ -165,9 +165,16 @@ func (r *UserRepository) Update(
 
 	model := models.UserEntityToModel(*user)
 
-	result := r.db.WithContext(ctx).
+	// Select("*") is load-bearing: Updates(struct) omits zero-valued fields, so
+	// clearing a nullable column was impossible. ResetFailedLogins sets
+	// LockedUntil = nil, the UPDATE silently skipped locked_until, and the
+	// account stayed locked for password login. Omit protects the immutable
+	// columns and the soft-delete marker, matching emergency_contact.go:127.
+	result := conn(ctx, r.db).
 		Model(&models.UserModel{}).
 		Where("id = ? AND deleted_at IS NULL", user.ID).
+		Select("*").
+		Omit("id", "public_id", "created_at", "deleted_at").
 		Updates(model)
 
 	if result.Error != nil {
@@ -175,7 +182,7 @@ func (r *UserRepository) Update(
 	}
 
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil
@@ -189,7 +196,7 @@ func (r *UserRepository) Delete(
 		return errors.New("user id is required")
 	}
 
-	result := r.db.WithContext(ctx).
+	result := conn(ctx, r.db).
 		Model(&models.UserModel{}).
 		Where("id = ? AND deleted_at IS NULL", id).
 		Update("deleted_at", gorm.Expr("CURRENT_TIMESTAMP"))
@@ -199,7 +206,7 @@ func (r *UserRepository) Delete(
 	}
 
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil
@@ -216,7 +223,7 @@ func (r *UserRepository) FindByPublicID(
 
 	var model models.UserModel
 
-	err := r.db.WithContext(ctx).
+	err := conn(ctx, r.db).
 		Where("public_id = ? AND deleted_at IS NULL", publicID).
 		First(&model).Error
 
@@ -240,7 +247,7 @@ func (r *UserRepository) DeleteByPublicID(
 		return errors.New("public id is required")
 	}
 
-	result := r.db.WithContext(ctx).
+	result := conn(ctx, r.db).
 		Model(&models.UserModel{}).
 		Where("public_id = ? AND deleted_at IS NULL", publicID).
 		Update("deleted_at", gorm.Expr("CURRENT_TIMESTAMP"))
@@ -250,7 +257,7 @@ func (r *UserRepository) DeleteByPublicID(
 	}
 
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil

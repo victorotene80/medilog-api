@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	clockpkg "github.com/victorotene80/medilog-api/internal/shared/clock"
+
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/application/command"
@@ -21,6 +24,7 @@ type ForgotPasswordHandler struct {
 	smsSender   appContracts.SMSSender
 	auditLogger appContracts.AuditLogger
 	clock       func() time.Time
+	isLive      bool
 }
 
 func NewForgotPasswordHandler(
@@ -30,9 +34,10 @@ func NewForgotPasswordHandler(
 	smsSender appContracts.SMSSender,
 	auditLogger appContracts.AuditLogger,
 	clock func() time.Time,
+	isLive bool,
 ) *ForgotPasswordHandler {
 	if clock == nil {
-		clock = func() time.Time { return time.Now().UTC() }
+		clock = clockpkg.Default()
 	}
 	return &ForgotPasswordHandler{
 		userRepo:    userRepo,
@@ -41,6 +46,7 @@ func NewForgotPasswordHandler(
 		smsSender:   smsSender,
 		auditLogger: auditLogger,
 		clock:       clock,
+		isLive:      isLive,
 	}
 }
 
@@ -51,7 +57,6 @@ func (h *ForgotPasswordHandler) Handle(
 	now := h.clock()
 	meta, _ := requestmeta.FromContext(ctx)
 
-	// look up by phone or email — always return success to caller to prevent enumeration
 	agg, err := h.userRepo.FindByPhone(ctx, cmd.Recipient)
 	if err != nil {
 		return struct{}{}, nil
@@ -59,7 +64,7 @@ func (h *ForgotPasswordHandler) Handle(
 	if agg == nil {
 		agg, err = h.userRepo.FindByEmail(ctx, cmd.Recipient)
 		if err != nil || agg == nil {
-			return struct{}{}, nil // silent — don't reveal whether account exists
+			return struct{}{}, nil
 		}
 	}
 
@@ -69,23 +74,45 @@ func (h *ForgotPasswordHandler) Handle(
 		return struct{}{}, fmt.Errorf("invalidate previous OTPs: %w", err)
 	}
 
+	channel := valueobjects.OTPChannelSMS
+	if strings.Contains(cmd.Recipient, "@") {
+		channel = valueobjects.OTPChannelEmail
+	}
+
 	otp, plainCode, err := h.otpService.NewOTP(
 		agg.ID,
 		cmd.Recipient,
-		valueobjects.OTPChannelSMS,
+		channel,
 		valueobjects.OTPPurposePasswordReset,
 	)
 	if err != nil {
 		return struct{}{}, fmt.Errorf("generate OTP: %w", err)
 	}
 
+	if !h.isLive {
+		plainCode = "123456"
+		hash, hashErr := h.otpService.Hash(plainCode)
+		if hashErr != nil {
+			return struct{}{}, fmt.Errorf("hash test OTP: %w", hashErr)
+		}
+		otp.CodeHash = hash
+	}
+
 	if err := h.otpRepo.Save(ctx, otp); err != nil {
 		return struct{}{}, fmt.Errorf("save OTP: %w", err)
 	}
 
-	message := fmt.Sprintf("Your MediLog password reset code is: %s. It expires in 10 minutes.", plainCode)
-	if err := h.smsSender.Send(ctx, cmd.Recipient, message); err != nil {
-		return struct{}{}, fmt.Errorf("send OTP SMS: %w", err)
+	if h.isLive {
+		message := fmt.Sprintf("Your MediLog password reset code is: %s. It expires in 10 minutes.", plainCode)
+		if channel == valueobjects.OTPChannelEmail {
+			if err := h.smsSender.Send(ctx, cmd.Recipient, message); err != nil {
+				return struct{}{}, fmt.Errorf("send OTP email: %w", err)
+			}
+		} else {
+			if err := h.smsSender.Send(ctx, cmd.Recipient, message); err != nil {
+				return struct{}{}, fmt.Errorf("send OTP SMS: %w", err)
+			}
+		}
 	}
 
 	if h.auditLogger != nil {
@@ -99,6 +126,7 @@ func (h *ForgotPasswordHandler) Handle(
 			OccurredAt: now,
 			Metadata: map[string]any{
 				"purpose": valueobjects.OTPPurposePasswordReset,
+				"channel": string(channel),
 			},
 		})
 	}

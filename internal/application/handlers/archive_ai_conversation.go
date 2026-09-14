@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	clockpkg "github.com/victorotene80/medilog-api/internal/shared/clock"
+
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	domainRepo "github.com/victorotene80/medilog-api/internal/domain/repository"
 )
@@ -20,7 +22,7 @@ func NewArchiveAIConversationHandler(
 	clock func() time.Time,
 ) *ArchiveAIConversationHandler {
 	if clock == nil {
-		clock = func() time.Time { return time.Now().UTC() }
+		clock = clockpkg.Default()
 	}
 
 	return &ArchiveAIConversationHandler{
@@ -38,7 +40,7 @@ func (h *ArchiveAIConversationHandler) Handle(
 		return struct{}{}, fmt.Errorf("find ai conversation: %w", err)
 	}
 	if agg == nil {
-		return struct{}{}, errors.New("conversation not found")
+		return struct{}{}, application.NewNotFound("conversation not found")
 	}
 
 	if err := agg.Archive(h.clock()); err != nil {

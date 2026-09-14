@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	clockpkg "github.com/victorotene80/medilog-api/internal/shared/clock"
+
 	"context"
 	"fmt"
 	"strconv"
@@ -27,7 +29,7 @@ func NewLogoutHandler(
 	clock func() time.Time,
 ) *LogoutHandler {
 	if clock == nil {
-		clock = func() time.Time { return time.Now().UTC() }
+		clock = clockpkg.Default()
 	}
 	return &LogoutHandler{
 		refreshRepo:  refreshRepo,

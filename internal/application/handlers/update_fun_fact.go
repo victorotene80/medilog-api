@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	"github.com/victorotene80/medilog-api/internal/domain/repository"
 )
@@ -23,14 +23,14 @@ func (h *UpdateFunFactHandler) Handle(
 	cmd command.UpdateFunFactCommand,
 ) (struct{}, error) {
 	if cmd.ID <= 0 {
-		return struct{}{}, errors.New("fun fact id is required")
+		return struct{}{}, application.NewValidation("fun fact id is required")
 	}
 	if strings.TrimSpace(cmd.Text) == "" {
-		return struct{}{}, errors.New("fun fact text is required")
+		return struct{}{}, application.NewValidation("fun fact text is required")
 	}
 	title := strings.TrimSpace(cmd.Title)
 	if title == "" {
-		return struct{}{}, errors.New("fun fact title is required")
+		return struct{}{}, application.NewValidation("fun fact title is required")
 	}
 	if err := validateFunFactRanges(cmd.TargetAgeMin, cmd.TargetAgeMax, cmd.AllergyCategory); err != nil {
 		return struct{}{}, err
@@ -41,7 +41,7 @@ func (h *UpdateFunFactHandler) Handle(
 		return struct{}{}, fmt.Errorf("find fun fact: %w", err)
 	}
 	if existing == nil {
-		return struct{}{}, errors.New("fun fact not found")
+		return struct{}{}, application.NewNotFound("fun fact not found")
 	}
 
 	existing.Title = title

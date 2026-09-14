@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	"github.com/victorotene80/medilog-api/internal/domain/repository"
 )
@@ -22,7 +22,7 @@ func (h *DeleteFunFactHandler) Handle(
 	cmd command.DeleteFunFactCommand,
 ) (struct{}, error) {
 	if cmd.ID <= 0 {
-		return struct{}{}, errors.New("fun fact id is required")
+		return struct{}{}, application.NewValidation("fun fact id is required")
 	}
 
 	existing, err := h.funFacts.FindByID(ctx, cmd.ID)
@@ -30,7 +30,7 @@ func (h *DeleteFunFactHandler) Handle(
 		return struct{}{}, fmt.Errorf("find fun fact: %w", err)
 	}
 	if existing == nil {
-		return struct{}{}, errors.New("fun fact not found")
+		return struct{}{}, application.NewNotFound("fun fact not found")
 	}
 
 	if err := h.funFacts.Delete(ctx, cmd.ID); err != nil {

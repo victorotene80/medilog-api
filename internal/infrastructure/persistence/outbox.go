@@ -8,6 +8,7 @@ import (
 	"time"
 
 	appmsg "github.com/victorotene80/medilog-api/internal/application/messaging"
+	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence/models"
 
 	"gorm.io/datatypes"
@@ -19,7 +20,18 @@ const (
 	OutboxStatusInProgress = 2
 	OutboxStatusSent       = 3
 	OutboxStatusFailed     = 4
+	// OutboxStatusDead is the terminal state for an envelope that has failed
+	// outboxMaxAttempts times. Without it a permanently unpublishable row is
+	// re-selected every poll forever and, because the batch is ordered by
+	// occurred_at, sits at the head of every batch — fifty such rows starve the
+	// queue completely.
+	OutboxStatusDead = 5
 )
+
+// outboxMaxAttempts bounds retries before an envelope is parked as dead. The
+// RabbitMQ consumer already models this with MaxRetries and a DLQ; the relay
+// should not invent a different answer.
+const outboxMaxAttempts = 10
 
 type OutboxRepository struct {
 	db *gorm.DB
@@ -41,7 +53,9 @@ func (r *OutboxRepository) Add(ctx context.Context, envelope appmsg.Envelope) er
 		return fmt.Errorf("map envelope to outbox model: %w", err)
 	}
 
-	if err := r.db.WithContext(ctx).Create(model).Error; err != nil {
+	// conn, not r.db: when the caller wrapped this in a TransactionManager unit
+	// of work, the envelope must commit with the state change it describes.
+	if err := conn(ctx, r.db).Create(model).Error; err != nil {
 		return fmt.Errorf("insert outbox event: %w", err)
 	}
 
@@ -49,14 +63,15 @@ func (r *OutboxRepository) Add(ctx context.Context, envelope appmsg.Envelope) er
 }
 
 func (r *OutboxRepository) FetchUnprocessed(ctx context.Context, limit int) ([]appmsg.Envelope, error) {
-	/*if limit <= 0 {
+	if limit <= 0 {
 		limit = 50
 	}
 
 	var rows []models.OutboxEventModel
 
-	err := r.db.WithContext(ctx).
+	err := conn(ctx, r.db).
 		Where("status IN ?", []int{OutboxStatusPending, OutboxStatusFailed}).
+		Where("attempts < ?", outboxMaxAttempts).
 		Order("occurred_at ASC").
 		Limit(limit).
 		Find(&rows).Error
@@ -73,17 +88,21 @@ func (r *OutboxRepository) FetchUnprocessed(ctx context.Context, limit int) ([]a
 		}
 
 		envelopes = append(envelopes, env)
-	}*/
+	}
 
-	return nil, nil
+	return envelopes, nil
 }
 
 func (r *OutboxRepository) MarkInProgress(ctx context.Context, id string) error {
 	now := time.Now().UTC()
 
-	result := r.db.WithContext(ctx).
+	// Compare-and-set: the status predicate is what makes this a claim. Without
+	// it two relay instances that fetched the same batch both "claimed" the row
+	// and both published it — and the RowsAffected == 0 branch below, which the
+	// relay already treats as "someone else took it", could never fire.
+	result := conn(ctx, r.db).
 		Model(&models.OutboxEventModel{}).
-		Where("id = ?", id).
+		Where("id = ? AND status IN ?", id, []int{OutboxStatusPending, OutboxStatusFailed}).
 		Updates(map[string]any{
 			"status":         OutboxStatusInProgress,
 			"in_progress_at": now,
@@ -95,7 +114,7 @@ func (r *OutboxRepository) MarkInProgress(ctx context.Context, id string) error 
 	}
 
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil
@@ -104,7 +123,7 @@ func (r *OutboxRepository) MarkInProgress(ctx context.Context, id string) error 
 func (r *OutboxRepository) MarkSent(ctx context.Context, id string) error {
 	now := time.Now().UTC()
 
-	result := r.db.WithContext(ctx).
+	result := conn(ctx, r.db).
 		Model(&models.OutboxEventModel{}).
 		Where("id = ?", id).
 		Updates(map[string]any{
@@ -120,22 +139,41 @@ func (r *OutboxRepository) MarkSent(ctx context.Context, id string) error {
 	}
 
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil
 }
 
-func (r *OutboxRepository) MarkFailed(ctx context.Context, id string) error {
+// MarkFailed records why an envelope could not be published and parks it as
+// dead once it has exhausted its attempts.
+//
+// The schema always had last_error and attempts; nothing wrote the first and
+// nothing read the second, so a failure's reason lived only in a log line that
+// could not be joined back to the row, and there was no cap and no dead-letter
+// state.
+func (r *OutboxRepository) MarkFailed(ctx context.Context, id string, cause error) error {
 	now := time.Now().UTC()
 
-	result := r.db.WithContext(ctx).
+	lastError := ""
+	if cause != nil {
+		lastError = cause.Error()
+	}
+	if len(lastError) > 1000 {
+		lastError = lastError[:1000]
+	}
+
+	result := conn(ctx, r.db).
 		Model(&models.OutboxEventModel{}).
 		Where("id = ?", id).
 		Updates(map[string]any{
-			"status":         OutboxStatusFailed,
+			"status": gorm.Expr(
+				"CASE WHEN attempts + 1 >= ? THEN ? ELSE ? END",
+				outboxMaxAttempts, OutboxStatusDead, OutboxStatusFailed,
+			),
 			"in_progress_at": nil,
 			"attempts":       gorm.Expr("attempts + 1"),
+			"last_error":     lastError,
 			"updated_at":     now,
 		})
 
@@ -144,7 +182,7 @@ func (r *OutboxRepository) MarkFailed(ctx context.Context, id string) error {
 	}
 
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil
@@ -169,7 +207,7 @@ func (r *OutboxRepository) ReclaimStaleInProgress(
 		Order("in_progress_at ASC").
 		Limit(limit)
 
-	result := r.db.WithContext(ctx).
+	result := conn(ctx, r.db).
 		Model(&models.OutboxEventModel{}).
 		Where("id IN (?)", subQuery).
 		Updates(map[string]any{

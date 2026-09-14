@@ -33,4 +33,14 @@ type SessionService interface {
 		deviceFingerprint string,
 		deviceName string,
 	) (SessionResult, error)
+
+	Refresh(
+		ctx context.Context,
+		oldRefreshToken string,
+		ipAddress string,
+		userAgent string,
+		deviceID string,
+		deviceFingerprint string,
+		deviceName string,
+	) (SessionResult, error)
 }

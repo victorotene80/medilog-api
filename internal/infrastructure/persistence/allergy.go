@@ -3,11 +3,15 @@ package persistence
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence/models"
 	"gorm.io/gorm"
 )
+
+var _ repository.AllergyRepository = (*AllergyRepository)(nil)
 
 type AllergyRepository struct {
 	db *gorm.DB
@@ -20,7 +24,7 @@ func NewAllergyRepository(db *gorm.DB) *AllergyRepository {
 func (r *AllergyRepository) FindByID(ctx context.Context, id int64) (*entities.Allergy, error) {
 	var m models.AllergyModel
 
-	if err := r.db.WithContext(ctx).First(&m, id).Error; err != nil {
+	if err := conn(ctx, r.db).Where("deleted_at IS NULL").First(&m, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -37,7 +41,7 @@ func (r *UserAllergyRepository) FindByPublicID(
 ) (*entities.UserAllergy, error) {
 	var m models.UserAllergyModel
 
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("public_id = ?", publicID).
 		First(&m).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -53,7 +57,7 @@ func (r *UserAllergyRepository) FindByPublicID(
 func (r *AllergyRepository) FindAll(ctx context.Context) ([]*entities.Allergy, error) {
 	var ms []models.AllergyModel
 
-	if err := r.db.WithContext(ctx).Find(&ms).Error; err != nil {
+	if err := conn(ctx, r.db).Find(&ms).Error; err != nil {
 		return nil, err
 	}
 
@@ -69,7 +73,7 @@ func (r *AllergyRepository) FindAll(ctx context.Context) ([]*entities.Allergy, e
 func (r *AllergyRepository) FindByCategory(ctx context.Context, category int) ([]*entities.Allergy, error) {
 	var ms []models.AllergyModel
 
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("category = ?", category).
 		Find(&ms).Error; err != nil {
 		return nil, err
@@ -91,7 +95,7 @@ func (r *AllergyRepository) Save(ctx context.Context, allergy *entities.Allergy)
 
 	m := models.AllergyToModel(*allergy)
 
-	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
+	if err := conn(ctx, r.db).Create(m).Error; err != nil {
 		return err
 	}
 
@@ -112,7 +116,7 @@ func (r *AllergyRepository) Update(ctx context.Context, allergy *entities.Allerg
 
 	m := models.AllergyToModel(*allergy)
 
-	result := r.db.WithContext(ctx).
+	result := conn(ctx, r.db).
 		Model(&models.AllergyModel{}).
 		Where("id = ?", allergy.ID).
 		Select("*").
@@ -124,7 +128,7 @@ func (r *AllergyRepository) Update(ctx context.Context, allergy *entities.Allerg
 	}
 
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil
@@ -135,15 +139,17 @@ func (r *AllergyRepository) Delete(ctx context.Context, id int64) error {
 		return errors.New("allergy id is required")
 	}
 
-	result := r.db.WithContext(ctx).
-		Delete(&models.AllergyModel{}, id)
+	result := conn(ctx, r.db).
+		Model(&models.AllergyModel{}).
+		Where("id = ?", id).
+		Updates(map[string]any{"deleted_at": time.Now()})
 
 	if result.Error != nil {
 		return result.Error
 	}
 
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil
@@ -167,7 +173,7 @@ func (r *AllergyRepository) SaveBatch(
 		modelList = append(modelList, *models.AllergyToModel(*allergy))
 	}
 
-	if err := r.db.WithContext(ctx).Create(&modelList).Error; err != nil {
+	if err := conn(ctx, r.db).Create(&modelList).Error; err != nil {
 		return err
 	}
 

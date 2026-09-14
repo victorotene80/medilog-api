@@ -26,15 +26,25 @@ func NewUserAggregate(user *entities.User) *UserAggregate {
 		EmergencyContacts: make([]*entities.EmergencyContact, 0),
 		Allergies:         make([]*entities.UserAllergy, 0),
 	}
-	agg.RaiseEvent(types.NewUserCreatedEvent(
-		user.ID,
-		user.Email,
-		user.Phone,
-		user.FirstName,
-		user.LastName,
-		user.Status.String(),
-	))
 	return agg
+}
+
+// RaiseCreatedEvent records the user.created event.
+//
+// It is deliberately not raised by NewUserAggregate: a new user has no database
+// identity until it is saved, so an event raised at construction captures
+// user.ID == 0 and every resulting outbox row is unjoinable to the user it
+// describes. Call this after the repository has assigned the ID.
+func (a *UserAggregate) RaiseCreatedEvent() {
+	a.SetID(a.User.ID)
+	a.RaiseEvent(types.NewUserCreatedEvent(
+		a.User.ID,
+		a.User.Email,
+		a.User.Phone,
+		a.User.FirstName,
+		a.User.LastName,
+		a.User.Status.String(),
+	))
 }
 
 func RestoreUserAggregate(
@@ -137,6 +147,22 @@ func (a *UserAggregate) RecordFailedLogin(lockedUntil *time.Time, now time.Time)
 
 func (a *UserAggregate) RecordSuccessfulLogin(ip string, now time.Time) {
 	a.User.ResetFailedLogins()
+
+	// A lockout is recorded in two places — locked_until and the status — but
+	// ResetFailedLogins clears only the timer. Without this the status stays
+	// "locked" forever: once locked_until passes the user can log in again
+	// (login tests locked_until, not status), yet every authenticated route
+	// behind CheckUserActive keeps returning 403, and nothing else in the
+	// codebase moves a locked user back to active. Clearing the lock has to
+	// clear all of it.
+	//
+	// Only the locked status is touched. A pending-verification or suspended
+	// account must not be promoted by the act of logging in, and the failed
+	// login counter is the only thing that sets this status in the first place.
+	if a.User.Status.IsLocked() {
+		a.ChangeStatus(valueobjects.UserStatusActive, now)
+	}
+
 	a.User.LastLoginAt = &now
 	a.User.LastLoginIP = &ip
 	a.User.LastActiveAt = &now

@@ -4,11 +4,15 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence/models"
 	"gorm.io/gorm"
 )
+
+var _ repository.UserAllergyRepository = (*UserAllergyRepository)(nil)
 
 type UserAllergyRepository struct {
 	db *gorm.DB
@@ -20,7 +24,7 @@ func NewUserAllergyRepository(db *gorm.DB) *UserAllergyRepository {
 
 func (r *UserAllergyRepository) FindByID(ctx context.Context, id int64) (*entities.UserAllergy, error) {
 	var m models.UserAllergyModel
-	if err := r.db.WithContext(ctx).First(&m, id).Error; err != nil {
+	if err := conn(ctx, r.db).First(&m, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -31,7 +35,7 @@ func (r *UserAllergyRepository) FindByID(ctx context.Context, id int64) (*entiti
 
 func (r *UserAllergyRepository) FindByUserID(ctx context.Context, userID int64) ([]*entities.UserAllergy, error) {
 	var ms []models.UserAllergyModel
-	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&ms).Error; err != nil {
+	if err := conn(ctx, r.db).Where("deleted_at IS NULL").Where("user_id = ?", userID).Find(&ms).Error; err != nil {
 		return nil, err
 	}
 	result := make([]*entities.UserAllergy, len(ms))
@@ -44,7 +48,7 @@ func (r *UserAllergyRepository) FindByUserID(ctx context.Context, userID int64) 
 
 func (r *UserAllergyRepository) Save(ctx context.Context, allergy *entities.UserAllergy) error {
 	m := models.UserAllergyEntityToModel(allergy)
-	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
+	if err := conn(ctx, r.db).Create(m).Error; err != nil {
 		return err
 	}
 	allergy.ID = m.ID
@@ -58,12 +62,12 @@ func (r *UserAllergyRepository) Delete(ctx context.Context, id int64) error {
 		return errors.New("user allergy id is required")
 	}
 
-	result := r.db.WithContext(ctx).Delete(&models.UserAllergyModel{}, id)
+	result := conn(ctx, r.db).Model(&models.UserAllergyModel{}).Where("id = ?", id).Updates(map[string]any{"deleted_at": time.Now()})
 	if result.Error != nil {
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 	return nil
 }
@@ -87,7 +91,7 @@ func (r *UserAllergyRepository) SaveBatch(
 		modelList = append(modelList, *model)
 	}
 
-	if err := r.db.WithContext(ctx).Create(&modelList).Error; err != nil {
+	if err := conn(ctx, r.db).Create(&modelList).Error; err != nil {
 		return err
 	}
 
@@ -105,16 +109,17 @@ func (r *UserAllergyRepository) DeleteByPublicID(
 	userID int64,
 	publicID string,
 ) error {
-	result := r.db.WithContext(ctx).
+	result := conn(ctx, r.db).
+		Model(&models.UserAllergyModel{}).
 		Where("user_id = ? AND public_id = ?", userID, publicID).
-		Delete(&models.UserAllergyModel{})
+		Updates(map[string]any{"deleted_at": time.Now()})
 
 	if result.Error != nil {
 		return result.Error
 	}
 
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil
@@ -135,7 +140,7 @@ func (r *UserAllergyRepository) FindByUserIDAndAllergyID(
 
 	var m models.UserAllergyModel
 
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("user_id = ? AND allergy_id = ?", userID, allergyID).
 		First(&m).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -146,6 +151,40 @@ func (r *UserAllergyRepository) FindByUserIDAndAllergyID(
 	}
 
 	return models.UserAllergyToEntity(&m), nil
+}
+
+// Update rewrites the mutable columns of an existing user allergy. public_id
+// and created_at are omitted so an update can never re-key or re-date a row.
+func (r *UserAllergyRepository) Update(
+	ctx context.Context,
+	allergy *entities.UserAllergy,
+) error {
+	if allergy == nil {
+		return errors.New("user allergy is required")
+	}
+
+	if allergy.ID <= 0 {
+		return errors.New("user allergy id is required")
+	}
+
+	m := models.UserAllergyEntityToModel(allergy)
+
+	result := conn(ctx, r.db).
+		Model(&models.UserAllergyModel{}).
+		Where("id = ?", allergy.ID).
+		Select("*").
+		Omit("id", "public_id", "created_at", "deleted_at").
+		Updates(m)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return repository.ErrNotFound
+	}
+
+	return nil
 }
 
 func (r *UserAllergyRepository) FindByUserIDAndName(
@@ -164,7 +203,7 @@ func (r *UserAllergyRepository) FindByUserIDAndName(
 
 	var m models.UserAllergyModel
 
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("user_id = ? AND LOWER(name) = LOWER(?)", userID, name).
 		First(&m).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

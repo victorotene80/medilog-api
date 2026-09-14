@@ -2,14 +2,13 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	domainRepo "github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/domain/valueobjects"
-	"gorm.io/gorm"
 )
 
 type UpdateMedicationHandler struct {
@@ -30,7 +29,7 @@ func (h *UpdateMedicationHandler) Handle(ctx context.Context, cmd command.Update
 		return struct{}{}, fmt.Errorf("find medication: %w", err)
 	}
 	if agg == nil {
-		return struct{}{}, errors.New("medication not found")
+		return struct{}{}, application.NewNotFound("medication not found")
 	}
 
 	now := time.Now().UTC()
@@ -71,26 +70,16 @@ func (h *UpdateMedicationHandler) Handle(ctx context.Context, cmd command.Update
 		return struct{}{}, fmt.Errorf("update medication: %w", err)
 	}
 
-	// Replace times: delete old, insert new.
-	if err := h.times.DeleteByMedicationID(ctx, m.ID); err != nil {
-		return struct{}{}, fmt.Errorf("clear medication times: %w", err)
+	newTimes, err := parseMedicationTimes(cmd.Times, now)
+	if err != nil {
+		return struct{}{}, err
 	}
-
-	if len(cmd.Times) > 0 {
-		newTimes, err := parseMedicationTimes(cmd.Times, now)
-		if err != nil {
-			return struct{}{}, err
-		}
-		for _, t := range newTimes {
-			t.MedicationID = m.ID
-		}
-		if err := h.times.SaveAll(ctx, newTimes); err != nil {
-			return struct{}{}, fmt.Errorf("save medication times: %w", err)
-		}
+	for _, t := range newTimes {
+		t.MedicationID = m.ID
+	}
+	if err := h.times.ReplaceTimes(ctx, m.ID, newTimes); err != nil {
+		return struct{}{}, fmt.Errorf("replace medication times: %w", err)
 	}
 
 	return struct{}{}, nil
 }
-
-// FindByPublicID is added to the repository interface — see section 7.
-var _ = gorm.ErrRecordNotFound // keep gorm import tidy if unused elsewhere

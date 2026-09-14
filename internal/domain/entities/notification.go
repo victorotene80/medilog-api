@@ -16,7 +16,11 @@ type Notification struct {
 	SentAt      *time.Time
 	ReadAt      *time.Time
 	Metadata    map[string]any
-	CreatedAt   time.Time
+	// DedupeKey identifies a server-generated notification so the scheduler can
+	// re-scan an overlapping window without ever emitting a duplicate. nil for
+	// hand-authored notifications, which are not deduplicated.
+	DedupeKey *string
+	CreatedAt time.Time
 }
 
 func (n *Notification) IsRead() bool { return n.ReadAt != nil }

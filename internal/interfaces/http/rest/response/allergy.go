@@ -21,4 +21,5 @@ type UserAllergyResponse struct {
 	CategoryStr string    `json:"category_label"`
 	IsCustom    bool      `json:"is_custom"`
 	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }

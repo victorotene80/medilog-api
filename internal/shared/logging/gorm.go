@@ -100,10 +100,13 @@ func (l *GormLogger) Trace(
 
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
+			// pg_detail is deliberately omitted: Postgres puts the offending
+			// values in it ("Key (email)=(alice@example.com) already exists."),
+			// which is the same user data ParamsFilter strips from the SQL above.
+			// pg_constraint and pg_column identify the failure without it.
 			fields = append(fields,
 				zap.String("pg_code", pgErr.Code),
 				zap.String("pg_message", pgErr.Message),
-				zap.String("pg_detail", pgErr.Detail),
 				zap.String("pg_table", pgErr.TableName),
 				zap.String("pg_column", pgErr.ColumnName),
 				zap.String("pg_constraint", pgErr.ConstraintName),

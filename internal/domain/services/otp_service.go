@@ -79,6 +79,13 @@ func (s *OTPService) Hash(code string) (string, error) {
 	return string(hash), nil
 }
 
+// TTL is the configured lifetime of a generated OTP. Exposed so callers that
+// must produce a response indistinguishable from the real one (the
+// account-enumeration decoy in RequestOTPHandler) can use the same value.
+func (s *OTPService) TTL() time.Duration {
+	return s.ttl
+}
+
 func (s *OTPService) Verify(code string, hash string) bool {
 	if code == "" || hash == "" {
 		return false

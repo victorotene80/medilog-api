@@ -12,6 +12,9 @@ type DefaultHTTPService struct {
 	client *http.Client
 }
 
+// maxResponseBytes caps how much of an upstream response is buffered.
+const maxResponseBytes int64 = 8 << 20 // 8 MiB
+
 func NewDefaultHTTPService(client *http.Client) *DefaultHTTPService {
 	if client == nil {
 		client = http.DefaultClient
@@ -58,9 +61,21 @@ func (s *DefaultHTTPService) Do(
 	}
 	defer httpRes.Body.Close()
 
-	body, err := io.ReadAll(httpRes.Body)
+	// Bounded: this is the single read path for Claude, Twilio, Telnyx and
+	// bulksms, the endpoints are env-configurable and the transport honours
+	// HTTP_PROXY, so a hijacked or misconfigured upstream streaming a large body
+	// would otherwise be buffered in full — limited only by the client timeout,
+	// then doubled by the JSON decode. Every current caller parses a small
+	// document.
+	body, err := io.ReadAll(io.LimitReader(httpRes.Body, maxResponseBytes+1))
 	if err != nil {
 		return nil, err
+	}
+
+	if int64(len(body)) > maxResponseBytes {
+		return nil, fmt.Errorf(
+			"http service: response from %s exceeds %d bytes", req.URL, maxResponseBytes,
+		)
 	}
 
 	return &HTTPResult{

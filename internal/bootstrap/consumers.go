@@ -1,35 +1,7 @@
 package bootstrap
 
-// ================================================================================
-// Kafka & RabbitMQ consumers — COMMENTED OUT
-// Uncomment the imports and body below to re-enable.
-// ================================================================================
-//import (
-//	"context"
-//
-//	"github.com/victorotene80/medilog-api/internal/application/messaging"
-//	"go.uber.org/zap"
-//)
-//
-//func registerConsumers(c Consumers, logger *zap.Logger) {
-//	c.EventConsumer.Subscribe("auth.payment.completed.v1", func(ctx context.Context, env messaging.Envelope) error {
-//		return nil
-//	})
-//
-//	c.TaskConsumer.Subscribe("auth.send-welcome-email.v1", func(ctx context.Context, env messaging.Envelope) error {
-//		return nil
-//	})
-//
-//	logger.Info("consumers registered")
-//}
-
-import "go.uber.org/zap"
-
-func registerConsumers(_ Consumers, _ *zap.Logger) {}
-
-/*package bootstrap
-
 import (
+	appmsg "github.com/victorotene80/medilog-api/internal/application/messaging"
 	"go.uber.org/zap"
 )
 
@@ -41,26 +13,22 @@ import (
 //   - One Subscribe call per topic/queue.
 //   - No business logic here — only wiring.
 func registerConsumers(c Consumers, logger *zap.Logger) {
-	// ── EventConsumer: Kafka ──────────────────────────────────────────────────
+	// ── EventConsumer: RabbitMQ ─────────────────────────────────────────────
 	// Subscribe to domain events produced by OTHER services.
-	// Uncomment and add handlers as you integrate with other services.
-
-	// c.EventConsumer.Subscribe(
-	// 	"payments.PaymentCompleted",
-	// 	func(ctx context.Context, env messaging.Envelope) error {
-	// 		return handlers.HandlePaymentCompleted(ctx, env, logger)
-	// 	},
-	// )
+	c.EventConsumer.Subscribe(appmsg.EventUserCreated, HandleAuthUserCreated(logger))
+	c.EventConsumer.Subscribe(appmsg.EventUserLocked, HandleAuthUserLocked(logger))
+	c.EventConsumer.Subscribe(appmsg.EventSessionCreated, HandleAuthSessionCreated(logger))
+	c.EventConsumer.Subscribe(appmsg.EventSessionRevoked, HandleAuthSessionRevoked(logger))
+	c.EventConsumer.Subscribe(appmsg.EventPasswordChanged, HandleAuthPasswordChanged(logger))
 
 	// ── TaskConsumer: RabbitMQ ────────────────────────────────────────────────
 	// Subscribe to internal retry queues and dead-letter replay.
+	c.TaskConsumer.Subscribe(appmsg.TaskSendWelcomeEmail, HandleSendWelcomeEmail(logger))
+	c.TaskConsumer.Subscribe(appmsg.TaskSendVerification, HandleSendVerification(logger))
+	c.TaskConsumer.Subscribe(appmsg.TaskSyncAnalyticsUser, HandleSyncAnalyticsUser(logger))
 
-	// c.TaskConsumer.Subscribe(
-	// 	"auth.send-welcome-email",
-	// 	func(ctx context.Context, env messaging.Envelope) error {
-	// 		return handlers.HandleSendWelcomeEmail(ctx, env, logger)
-	// 	},
-	// )
-
-	logger.Info("consumers registered")
-}*/
+	logger.Info("consumers registered",
+		zap.Int("event_handlers", 5),
+		zap.Int("task_handlers", 3),
+	)
+}

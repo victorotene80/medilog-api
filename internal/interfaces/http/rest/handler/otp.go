@@ -30,10 +30,10 @@ func NewOTPHandler(commandBus *messaging.CommandBus, validator appContracts.Vali
 //	@Tags        Auth / OTP
 //	@Accept      json
 //	@Produce     json
-//	@Param       body body request.RequestOTPRequest true "OTP request payload"
+//	@Param       body body request.OTPRequest true "OTP request payload"
 //	@Success     200 {object} response.APIResponse[response.RequestOTPResponse]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     422 {object} response.APIResponse[struct{}]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     422 {object} response.APIResponse[response.EmptyData]
 //	@Router      /auth/otp/request [post]
 func (h *OTPHandler) RequestOTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
@@ -48,7 +48,7 @@ func (h *OTPHandler) RequestOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.validator.Struct(req); err != nil {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "One or more fields are invalid", err.Error())
+		logAndRespond(w, http.StatusBadRequest, "VALIDATION_ERROR", "One or more fields are invalid", err)
 		return
 	}
 
@@ -62,7 +62,7 @@ func (h *OTPHandler) RequestOTP(w http.ResponseWriter, r *http.Request) {
 		h.commandBus, r.Context(), cmd,
 	)
 	if err != nil {
-		response.Error(w, http.StatusUnprocessableEntity, "OTP_REQUEST_FAILED", "Could not send OTP", err.Error())
+		logAndRespond(w, http.StatusUnprocessableEntity, "OTP_REQUEST_FAILED", "Could not send OTP", err)
 		return
 	}
 
@@ -80,8 +80,8 @@ func (h *OTPHandler) RequestOTP(w http.ResponseWriter, r *http.Request) {
 //	@Produce     json
 //	@Param       body body request.VerifyOTPRequest true "OTP verify payload"
 //	@Success     200 {object} response.APIResponse[response.VerifyOTPResponse]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     422 {object} response.APIResponse[struct{}]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     422 {object} response.APIResponse[response.EmptyData]
 //	@Router      /auth/otp/verify [post]
 func (h *OTPHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
@@ -96,7 +96,7 @@ func (h *OTPHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.validator.Struct(req); err != nil {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "One or more fields are invalid", err.Error())
+		logAndRespond(w, http.StatusBadRequest, "VALIDATION_ERROR", "One or more fields are invalid", err)
 		return
 	}
 
@@ -111,7 +111,7 @@ func (h *OTPHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 		h.commandBus, r.Context(), cmd,
 	)
 	if err != nil {
-		response.Error(w, http.StatusUnprocessableEntity, "OTP_VERIFY_FAILED", "Invalid or expired OTP", err.Error())
+		logAndRespond(w, http.StatusUnprocessableEntity, "OTP_VERIFY_FAILED", "Invalid or expired OTP", err)
 		return
 	}
 
@@ -131,8 +131,8 @@ func (h *OTPHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 //	@Produce     json
 //	@Param       body body request.VerifyOnboardingOTPRequest true "Onboarding OTP verify payload"
 //	@Success     200 {object} response.APIResponse[response.VerifyOnboardingOTPResponse]
-//	@Failure     400 {object} response.APIResponse[struct{}]
-//	@Failure     422 {object} response.APIResponse[struct{}]
+//	@Failure     400 {object} response.APIResponse[response.EmptyData]
+//	@Failure     422 {object} response.APIResponse[response.EmptyData]
 //	@Router      /auth/otp/verify-onboarding [post]
 func (h *OTPHandler) VerifyOnboardingOTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
@@ -154,12 +154,12 @@ func (h *OTPHandler) VerifyOnboardingOTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.validator.Struct(req); err != nil {
-		response.Error(
+		logAndRespond(
 			w,
 			http.StatusBadRequest,
 			"VALIDATION_ERROR",
 			"One or more fields are invalid",
-			err.Error(),
+			err,
 		)
 		return
 	}
@@ -180,12 +180,12 @@ func (h *OTPHandler) VerifyOnboardingOTP(w http.ResponseWriter, r *http.Request)
 		cmd,
 	)
 	if err != nil {
-		response.Error(
+		logAndRespond(
 			w,
 			http.StatusUnprocessableEntity,
 			"ONBOARDING_OTP_VERIFY_FAILED",
 			"Invalid or expired OTP",
-			err.Error(),
+			err,
 		)
 		return
 	}

@@ -58,6 +58,10 @@ func applyHeaders(req *http.Request, headers map[string]string, body any) {
 	if req.Header.Get("Accept") == "" {
 		req.Header.Set("Accept", "application/json")
 	}
+
+	if req.Header.Get("User-Agent") == "" {
+		req.Header.Set("User-Agent", "medilog-api/1.0")
+	}
 }
 
 func decodeJSON[T any](res *HTTPResult) (*T, error) {

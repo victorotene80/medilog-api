@@ -7,6 +7,12 @@ type CreateAIConversationCommand struct {
 	RelatedVisitPublicID      *string
 }
 
+type UpdateAIConversationCommand struct {
+	UserID               int64
+	ConversationPublicID string
+	Title                *string
+}
+
 type SendAIMessageCommand struct {
 	UserID               int64
 	ConversationPublicID string
@@ -18,3 +24,4 @@ type ArchiveAIConversationCommand struct {
 	UserID               int64
 	ConversationPublicID string
 }
+

@@ -47,8 +47,8 @@ type DashboardMedicationOverviewResponse struct {
 }
 
 type DashboardFlaggedDrugOverviewResponse struct {
-	Completed int `json:"completed"`
-	Total     int `json:"total"`
+	Flagged int `json:"flagged"`
+	Total   int `json:"total"`
 }
 
 type DashboardFunFactResponse struct {

@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	domainRepo "github.com/victorotene80/medilog-api/internal/domain/repository"
 )
@@ -24,7 +24,7 @@ func (h *CompleteMedicationHandler) Handle(ctx context.Context, cmd command.Comp
 		return struct{}{}, fmt.Errorf("find medication: %w", err)
 	}
 	if agg == nil {
-		return struct{}{}, errors.New("medication not found")
+		return struct{}{}, application.NewNotFound("medication not found")
 	}
 
 	if err := agg.Complete(time.Now().UTC()); err != nil {

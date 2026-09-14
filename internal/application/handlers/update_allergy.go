@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"strings"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/domain/valueobjects"
@@ -25,12 +25,12 @@ func (h *UpdateAllergyHandler) Handle(
 	cmd command.UpdateAllergyCommand,
 ) (struct{}, error) {
 	if cmd.ID <= 0 {
-		return struct{}{}, errors.New("allergy id is required")
+		return struct{}{}, application.NewValidation("allergy id is required")
 	}
 
 	name := strings.TrimSpace(cmd.Name)
 	if name == "" {
-		return struct{}{}, errors.New("allergy name is required")
+		return struct{}{}, application.NewValidation("allergy name is required")
 	}
 
 	category, err := valueobjects.NewAllergyCategory(cmd.Category)
@@ -43,7 +43,7 @@ func (h *UpdateAllergyHandler) Handle(
 		return struct{}{}, err
 	}
 	if existing == nil {
-		return struct{}{}, errors.New("allergy not found")
+		return struct{}{}, application.NewNotFound("allergy not found")
 	}
 
 	var description *string

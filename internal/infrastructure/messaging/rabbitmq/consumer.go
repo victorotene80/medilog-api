@@ -3,6 +3,7 @@ package rabbitmq
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -162,6 +163,10 @@ func (c *Consumer) Consume(ctx context.Context) error {
 	return nil
 }
 
+// ErrDeliveriesClosed reports that the broker closed the delivery channel while
+// the consumer was still meant to be running.
+var ErrDeliveriesClosed = errors.New("rabbitmq consumer: broker closed the delivery channel")
+
 func (c *Consumer) consumeQueue(ctx context.Context, sub subscription) error {
 	queue := queueName(sub.name)
 
@@ -184,7 +189,20 @@ func (c *Consumer) consumeQueue(ctx context.Context, sub subscription) error {
 			return nil
 		case d, ok := <-deliveries:
 			if !ok {
-				return nil
+				// amqp091 closes this channel whenever the underlying channel or
+				// connection closes — a broker restart, a heartbeat miss, a
+				// network blip. Returning nil here made that indistinguishable
+				// from the ctx.Done() shutdown above, so every consumer goroutine
+				// exited, Consume returned nil, and the caller logged nothing:
+				// the API stayed up, healthy and silent, consuming nothing until
+				// someone redeployed it.
+				//
+				// NOTE: this makes the failure visible, it does not recover from
+				// it. NewConsumer dials once and there is no reconnect loop, so
+				// the process still needs restarting to resume consumption.
+				return fmt.Errorf(
+					"%w: queue %q", ErrDeliveriesClosed, queue,
+				)
 			}
 			if err := c.handle(ctx, sub.name, d, sub.handler); err != nil {
 				return err

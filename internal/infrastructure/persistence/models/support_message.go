@@ -4,15 +4,17 @@ import (
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"gorm.io/gorm"
 )
 
 type SupportMessageModel struct {
-	ID             int64     `gorm:"column:id;primaryKey;autoIncrement"`
-	TicketID       int64     `gorm:"column:ticket_id;not null;index"`
-	SenderUserID   *int64    `gorm:"column:sender_user_id"`
-	Message        string    `gorm:"column:message;not null"`
-	IsInternalNote bool      `gorm:"column:is_internal_note;not null;default:false"`
-	CreatedAt      time.Time `gorm:"column:created_at;autoCreateTime"`
+	ID             int64          `gorm:"column:id;primaryKey;autoIncrement"`
+	TicketID       int64          `gorm:"column:ticket_id;not null;index"`
+	SenderUserID   *int64         `gorm:"column:sender_user_id"`
+	Message        string         `gorm:"column:message;not null"`
+	IsInternalNote bool           `gorm:"column:is_internal_note;not null;default:false"`
+	DeletedAt      gorm.DeletedAt `gorm:"column:deleted_at;index"`
+	CreatedAt      time.Time      `gorm:"column:created_at;autoCreateTime"`
 }
 
 func (SupportMessageModel) TableName() string { return "support_messages" }

@@ -18,6 +18,7 @@ type UserAllergyModel struct {
 	Severity    *int16         `gorm:"column:severity"` // smallint → *int16, never a value object
 	Category    int            `gorm:"column:category;not null"`
 	CreatedAt   time.Time      `gorm:"column:created_at"`
+	UpdatedAt   time.Time      `gorm:"column:updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"column:deleted_at;index"`
 }
 
@@ -48,6 +49,7 @@ func UserAllergyToEntity(m *UserAllergyModel) *entities.UserAllergy {
 		Severity:    severity,
 		Category:    category,
 		CreatedAt:   m.CreatedAt,
+		UpdatedAt:   m.UpdatedAt,
 	}
 }
 
@@ -72,5 +74,6 @@ func UserAllergyEntityToModel(e *entities.UserAllergy) *UserAllergyModel {
 		Severity:    severity,
 		Category:    int(e.Category),
 		CreatedAt:   e.CreatedAt,
+		UpdatedAt:   e.UpdatedAt,
 	}
 }

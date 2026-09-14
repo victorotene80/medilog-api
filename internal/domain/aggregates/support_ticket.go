@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/events/types"
 	"github.com/victorotene80/medilog-api/internal/domain/valueobjects"
 )
 
@@ -46,6 +47,11 @@ func (a *SupportTicketAggregate) AddMessage(msg *entities.SupportMessage, now ti
 	}
 	a.Messages = append(a.Messages, msg)
 	a.Ticket.LastMessageAt = &now
+	senderType := "user"
+	if msg.IsSystemMessage() {
+		senderType = "system"
+	}
+	a.RaiseEvent(types.NewSupportTicketMessageAddedEvent(a.Ticket.ID, senderType))
 	return nil
 }
 
@@ -62,6 +68,7 @@ func (a *SupportTicketAggregate) Close(now time.Time) error {
 		return errors.New("ticket is already closed")
 	}
 	a.Ticket.Close(now)
+	a.RaiseEvent(types.NewSupportTicketClosedEvent(a.Ticket.ID))
 	return nil
 }
 

@@ -1,15 +1,16 @@
 package handlers
 
 import (
+	clockpkg "github.com/victorotene80/medilog-api/internal/shared/clock"
+
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
-	"github.com/victorotene80/medilog-api/internal/application/messaging"
 	"github.com/victorotene80/medilog-api/internal/domain/aggregates"
 	"github.com/victorotene80/medilog-api/internal/domain/contracts"
 	"github.com/victorotene80/medilog-api/internal/domain/repository"
@@ -36,7 +37,7 @@ func NewLoginHandler(
 	clock func() time.Time,
 ) *LoginHandler {
 	if clock == nil {
-		clock = func() time.Time { return time.Now().UTC() }
+		clock = clockpkg.Default()
 	}
 	return &LoginHandler{
 		userRepo:       userRepo,
@@ -57,11 +58,11 @@ func (h *LoginHandler) Handle(
 
 	agg, err := h.resolveUser(ctx, cmd)
 	if err != nil || agg == nil {
-		return nil, errors.New("invalid credentials")
+		return nil, application.NewUnauthorized("invalid credentials")
 	}
 
 	if agg.IsLocked(now) {
-		return nil, errors.New("account is locked")
+		return nil, application.NewForbidden("account is locked")
 	}
 
 	if agg.User.PasswordHash == nil || !h.passwordHasher.Verify(cmd.Password, *agg.User.PasswordHash) {
@@ -75,7 +76,7 @@ func (h *LoginHandler) Handle(
 		if err := h.userRepo.Update(ctx, agg); err != nil {
 			return nil, err
 		}
-		return nil, errors.New("invalid credentials")
+		return nil, application.NewUnauthorized("invalid credentials")
 	}
 
 	lastLogin := agg.User.LastLoginAt
@@ -85,25 +86,10 @@ func (h *LoginHandler) Handle(
 		return nil, err
 	}
 
-	if h.eventPublisher != nil {
-		eventMeta := messaging.Context{
-			Kind:          messaging.KindIntegrationEvent,
-			Name:          "auth.user.login-recorded.v1",
-			AggregateType: "user",
-			Action:        "login",
-			IPAddress:     &meta.IPAddress,
-			UserAgent:     &meta.UserAgent,
-			DeviceID:      &meta.DeviceID,
-		}
-		if err := h.eventPublisher.Publish(
-			ctx,
-			agg.PullEvents(),
-			eventMeta.ToMetadata(),
-		); err != nil {
-			return nil, fmt.Errorf("publish login events: %w", err)
-		}
-		agg.ClearEvents()
-	}
+	// user.loggedIn is published by UserAggregateRepository.Update, on the same
+	// transaction as the row it describes, with the caller's IP, user agent and
+	// device taken from the request context. Publishing again here would send an
+	// empty batch: the drain has already cleared the aggregate.
 
 	sessionResult, err := h.sessionService.Create(
 		ctx,

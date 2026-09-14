@@ -15,3 +15,61 @@ var (
 	ErrVerificationNeeded = errors.New("verification required")
 	ErrOnboardingRequired = errors.New("onboarding required")
 )
+
+// ErrorKind classifies an AppError so the HTTP layer can map it to a
+// meaningful status code instead of collapsing everything into a generic 500.
+type ErrorKind int
+
+const (
+	KindInternal ErrorKind = iota
+	KindNotFound
+	KindConflict
+	KindValidation
+	KindUnauthorized
+	KindForbidden
+	KindRateLimited
+	// KindQuotaExceeded means the caller's allowance for a metered resource is
+	// spent (e.g. the daily AI question quota). It is deliberately distinct from
+	// KindRateLimited: rate limiting means "too fast, retry shortly", whereas a
+	// spent quota does not clear until the window resets or the plan is upgraded.
+	// The HTTP layer maps it to 402 so clients can tell the two apart.
+	KindQuotaExceeded
+)
+
+// AppError is a typed application error carrying a machine-friendly kind.
+// It flows through the command bus and httperr.StatusFrom (via errors.As),
+// so domain failures surface with a correct HTTP status.
+type AppError struct {
+	Kind    ErrorKind
+	Message string
+}
+
+func (e *AppError) Error() string { return e.Message }
+
+func NewNotFound(msg string) error {
+	return &AppError{Kind: KindNotFound, Message: msg}
+}
+
+func NewConflict(msg string) error {
+	return &AppError{Kind: KindConflict, Message: msg}
+}
+
+func NewValidation(msg string) error {
+	return &AppError{Kind: KindValidation, Message: msg}
+}
+
+func NewUnauthorized(msg string) error {
+	return &AppError{Kind: KindUnauthorized, Message: msg}
+}
+
+func NewForbidden(msg string) error {
+	return &AppError{Kind: KindForbidden, Message: msg}
+}
+
+func NewRateLimited(msg string) error {
+	return &AppError{Kind: KindRateLimited, Message: msg}
+}
+
+func NewQuotaExceeded(msg string) error {
+	return &AppError{Kind: KindQuotaExceeded, Message: msg}
+}

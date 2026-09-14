@@ -1,1 +1,15 @@
 .env
+http-client.private.env.json
+coverage.out
+coverage.html
+*.exe
+*.test
+*.out
+.idea/
+medilog-api
+
+# Documents, instructions, and claude files
+*.md
+*.txt
+.claude/
+docs/

@@ -6,9 +6,12 @@ import (
 	"strings"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence/models"
 	"gorm.io/gorm"
 )
+
+var _ repository.CountryRepository = (*CountryRepository)(nil)
 
 type CountryRepository struct {
 	db *gorm.DB
@@ -21,7 +24,7 @@ func NewCountryRepository(db *gorm.DB) *CountryRepository {
 func (r *CountryRepository) FindAll(ctx context.Context) ([]*entities.Country, error) {
 	var ms []models.CountryModel
 
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Order("name ASC").
 		Find(&ms).Error; err != nil {
 		return nil, err
@@ -45,7 +48,7 @@ func (r *CountryRepository) FindByCode(ctx context.Context, code string) (*entit
 
 	var m models.CountryModel
 
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("code = ?", code).
 		First(&m).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

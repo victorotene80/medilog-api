@@ -1,11 +1,8 @@
 package models
 
 import (
-	"encoding/json"
-	"fmt"
 	"time"
 
-	appmsg "github.com/victorotene80/medilog-api/internal/application/messaging"
 	"gorm.io/datatypes"
 )
 
@@ -34,38 +31,4 @@ type OutboxEventModel struct {
 
 func (OutboxEventModel) TableName() string {
 	return "outbox_events"
-}
-
-func envelopeToOutboxEventModel(envelope appmsg.Envelope) (*OutboxEventModel, error) {
-	metadataBytes, err := json.Marshal(envelope.Metadata)
-	if err != nil {
-		return nil, fmt.Errorf("marshal metadata: %w", err)
-	}
-
-	if envelope.Metadata == nil {
-		metadataBytes = []byte(`{}`)
-	}
-
-	return &OutboxEventModel{
-		ID:            envelope.ID,
-		Name:          envelope.Name,
-		Kind:          string(envelope.Kind),
-		AggregateID:   envelope.AggregateID,
-		AggregateType: envelope.AggregateType,
-		OccurredAt:    envelope.OccurredAt,
-		Payload:       datatypes.JSON(envelope.Payload),
-		Metadata:      datatypes.JSON(metadataBytes),
-		CorrelationID: nullableString(envelope.CorrelationID),
-		CausationID:   nullableString(envelope.CausationID),
-		Version:       envelope.Version,
-		Status:        1,
-		Attempts:      0,
-	}, nil
-}
-
-func nullableString(value string) *string {
-	if value == "" {
-		return nil
-	}
-	return &value
 }

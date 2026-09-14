@@ -1,12 +1,15 @@
 package handlers
 
 import (
+	clockpkg "github.com/victorotene80/medilog-api/internal/shared/clock"
+
 	"context"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
 	"github.com/victorotene80/medilog-api/internal/application/mapper"
@@ -30,7 +33,7 @@ func NewCreateAIConversationHandler(
 	clock func() time.Time,
 ) *CreateAIConversationHandler {
 	if clock == nil {
-		clock = func() time.Time { return time.Now().UTC() }
+		clock = clockpkg.Default()
 	}
 
 	return &CreateAIConversationHandler{
@@ -46,7 +49,7 @@ func (h *CreateAIConversationHandler) Handle(
 	cmd command.CreateAIConversationCommand,
 ) (dto.AIConversationDTO, error) {
 	if cmd.UserID <= 0 {
-		return dto.AIConversationDTO{}, errors.New("user id is required")
+		return dto.AIConversationDTO{}, application.NewValidation("user id is required")
 	}
 
 	relatedMedicationID, err := h.resolveMedicationID(ctx, cmd.UserID, cmd.RelatedMedicationPublicID)
@@ -96,7 +99,7 @@ func (h *CreateAIConversationHandler) resolveMedicationID(
 		return nil, fmt.Errorf("find related medication: %w", err)
 	}
 	if agg == nil || agg.Medication == nil {
-		return nil, errors.New("related medication not found")
+		return nil, application.NewNotFound("related medication not found")
 	}
 
 	id := agg.Medication.ID
@@ -120,7 +123,7 @@ func (h *CreateAIConversationHandler) resolveVisitID(
 		return nil, fmt.Errorf("find related visit: %w", err)
 	}
 	if visit == nil {
-		return nil, errors.New("related visit not found")
+		return nil, application.NewNotFound("related visit not found")
 	}
 
 	id := visit.ID

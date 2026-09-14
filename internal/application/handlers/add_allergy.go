@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
@@ -35,7 +35,7 @@ func (h *AllergyCreationHandler) Handle(
 ) (struct{}, error) {
 	name := strings.TrimSpace(cmd.Name)
 	if name == "" {
-		return struct{}{}, errors.New("allergy name is required")
+		return struct{}{}, application.NewValidation("allergy name is required")
 	}
 
 	category, err := valueobjects.NewAllergyCategory(cmd.Category)

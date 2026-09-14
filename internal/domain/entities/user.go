@@ -20,6 +20,7 @@ type User struct {
 	CountryCode           *valueobjects.CountryCode
 	PasswordHash          *string
 	Status                valueobjects.UserStatus
+	Role                  valueobjects.UserRole
 	EmailVerifiedAt       *time.Time
 	PhoneVerifiedAt       *time.Time
 	IsOnboardingCompleted bool
@@ -58,6 +59,7 @@ func NewUser(
 		BloodType:             &bloodType,
 		Sex:                   &sex,
 		Status:                valueobjects.UserStatusPendingVerification,
+		Role:                  valueobjects.UserRoleUser,
 		IsOnboardingCompleted: false,
 		CreatedAt:             now,
 		UpdatedAt:             now,
@@ -83,6 +85,7 @@ func NewGoogleUser(
 		BloodType:             nil,
 		CountryCode:           nil,
 		Status:                valueobjects.UserStatusActive,
+		Role:                  valueobjects.UserRoleUser,
 		EmailVerifiedAt:       &now,
 		IsOnboardingCompleted: false,
 		CreatedAt:             now,

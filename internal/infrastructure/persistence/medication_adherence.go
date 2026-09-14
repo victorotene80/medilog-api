@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence/models"
 	"gorm.io/gorm"
 )
+
+var _ repository.MedicationAdherenceLogRepository = (*MedicationAdherenceLogRepository)(nil)
 
 type MedicationAdherenceLogRepository struct {
 	db *gorm.DB
@@ -20,7 +23,7 @@ func NewMedicationAdherenceLogRepository(db *gorm.DB) *MedicationAdherenceLogRep
 
 func (r *MedicationAdherenceLogRepository) FindByID(ctx context.Context, id int64) (*entities.MedicationAdherenceLog, error) {
 	var m models.MedicationAdherenceLogModel
-	if err := r.db.WithContext(ctx).First(&m, id).Error; err != nil {
+	if err := conn(ctx, r.db).First(&m, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -31,7 +34,7 @@ func (r *MedicationAdherenceLogRepository) FindByID(ctx context.Context, id int6
 
 func (r *MedicationAdherenceLogRepository) FindByMedicationID(ctx context.Context, medicationID int64) ([]*entities.MedicationAdherenceLog, error) {
 	var ms []models.MedicationAdherenceLogModel
-	if err := r.db.WithContext(ctx).Where("medication_id = ?", medicationID).Find(&ms).Error; err != nil {
+	if err := conn(ctx, r.db).Where("medication_id = ?", medicationID).Find(&ms).Error; err != nil {
 		return nil, err
 	}
 	return toAdherenceEntities(ms)
@@ -39,7 +42,7 @@ func (r *MedicationAdherenceLogRepository) FindByMedicationID(ctx context.Contex
 
 func (r *MedicationAdherenceLogRepository) FindByUserIDAndDateRange(ctx context.Context, userID int64, from, to time.Time) ([]*entities.MedicationAdherenceLog, error) {
 	var ms []models.MedicationAdherenceLogModel
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("user_id = ? AND scheduled_at BETWEEN ? AND ?", userID, from, to).
 		Order("scheduled_at ASC").
 		Find(&ms).Error; err != nil {
@@ -50,7 +53,7 @@ func (r *MedicationAdherenceLogRepository) FindByUserIDAndDateRange(ctx context.
 
 func (r *MedicationAdherenceLogRepository) Save(ctx context.Context, log *entities.MedicationAdherenceLog) error {
 	m := models.MedicationAdherenceLogToModel(log)
-	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
+	if err := conn(ctx, r.db).Create(m).Error; err != nil {
 		return err
 	}
 	log.ID = m.ID
@@ -66,7 +69,7 @@ func (r *MedicationAdherenceLogRepository) Update(ctx context.Context, log *enti
 	}
 
 	model := models.MedicationAdherenceLogToModel(log)
-	result := r.db.WithContext(ctx).
+	result := conn(ctx, r.db).
 		Model(&models.MedicationAdherenceLogModel{}).
 		Where("id = ?", log.ID).
 		Select("*").
@@ -76,7 +79,7 @@ func (r *MedicationAdherenceLogRepository) Update(ctx context.Context, log *enti
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 	return nil
 }

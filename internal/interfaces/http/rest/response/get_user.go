@@ -13,6 +13,8 @@ type GetUserResponse struct {
 	BloodType           string                      `json:"blood_type,omitempty"`
 	Height              *float64                    `json:"height,omitempty"`
 	Weight              *float64                    `json:"weight,omitempty"`
+	WeightUnit          string                      `json:"weight_unit,omitempty"`
+	TemperatureUnit     string                      `json:"temperature_unit,omitempty"`
 	Country             string                      `json:"country,omitempty"`
 	AvatarURL           *string                     `json:"avatar_url,omitempty"`
 	CountryCode         string                      `json:"country_code,omitempty"`

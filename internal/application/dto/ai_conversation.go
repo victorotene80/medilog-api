@@ -35,6 +35,9 @@ type SendAIMessageResultDTO struct {
 	PromptTokens int
 	OutputTokens int
 	ContextMeta  map[string]any
+	// Quota reflects the allowance *after* this message was counted, so the
+	// client can update its counter without a follow-up GET /ai/quota.
+	Quota AIQuotaDTO
 }
 
 type PatientContextChatRequest struct {

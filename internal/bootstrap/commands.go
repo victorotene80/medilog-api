@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -31,7 +32,7 @@ func initializeCommands(
 	cfg *config.Config,
 	redisClient *redis.Client,
 	logger *zap.Logger,
-) (*messaging.CommandBus, appContracts.AuthService) {
+) (*messaging.CommandBus, appContracts.AuthService, error) {
 
 	bus := messaging.NewCommandBus()
 	clock := func() time.Time { return time.Now().UTC() }
@@ -45,12 +46,12 @@ func initializeCommands(
 		bcrypt.DefaultCost,
 	)
 	if err != nil {
-		panic(err)
+		return nil, nil, fmt.Errorf("failed to create password hasher: %w", err)
 	}
 
 	sessionHasher, err := domainServices.NewSessionKeyHasher(cfg.Security.SessionPepper)
 	if err != nil {
-		panic(err)
+		return nil, nil, fmt.Errorf("failed to create session hasher: %w", err)
 	}
 
 	tokenGen := infraServices.NewJWTGenerator(cfg.Security.JWTSecret)
@@ -64,7 +65,6 @@ func initializeCommands(
 	passwordService := domainServices.NewPasswordService(passwordPolicy)
 	lockService := domainServices.NewAccountLockService(lockPolicy)
 
-	//otpPolicy := policy()
 	otpConfig := cfg.OTP
 	otpService := domainServices.NewOTPService(
 		otpConfig.Length,
@@ -82,6 +82,17 @@ func initializeCommands(
 		redisClient,
 		sessionPolicy.MaxDuration,
 	)
+	// Lets a handler commit a state change and the outbox row describing it in
+	// one transaction.
+	txManager := audit.NewTransactionManager(p.DB)
+
+	// Single owner of "end every live session for this user": revoking the
+	// refresh-token rows and bumping the session version must not drift apart.
+	sessionInvalidator := appServices.NewSessionInvalidator(
+		p.RefreshTokenRepo,
+		sessionVersionCache,
+	)
+
 	countriesCache := cacheInfra.NewRedisCache[string, []dto.CountryDTO](
 		redisClient,
 		"reference:countries:",
@@ -104,6 +115,7 @@ func initializeCommands(
 		sessionHasher,
 		sessionPolicy,
 		sessionCache,
+		sessionVersionCache,
 		clock,
 	)
 
@@ -118,8 +130,8 @@ func initializeCommands(
 
 	registerHandler := appHandlers.NewRegisterHandler(
 		p.UserAggregateRepo,
+		txManager,
 		passwordHasher,
-		sessionSvc,
 		eventPublisher,
 		clock,
 		passwordService,
@@ -132,6 +144,7 @@ func initializeCommands(
 		ext.GoogleAuth,
 		sessionSvc,
 		eventPublisher,
+		txManager,
 		clock,
 	)
 
@@ -141,6 +154,7 @@ func initializeCommands(
 		otpService,
 		ext.SMSSender,
 		clock,
+		cfg.App.IsLive,
 	)
 	verifyOTPHandler := appHandlers.NewVerifyOTPHandler(
 		p.OTPRepo,
@@ -163,17 +177,19 @@ func initializeCommands(
 		ext.SMSSender,
 		auditLogger,
 		clock,
+		cfg.App.IsLive,
 	)
 
 	resetPasswordHandler := appHandlers.NewResetPasswordHandler(
 		p.UserAggregateRepo,
 		p.OTPRepo,
-		p.RefreshTokenRepo,
+		sessionInvalidator,
 		passwordHasher,
 		passwordService,
 		otpService,
 		auditLogger,
 		clock,
+		cfg.App.IsLive,
 	)
 
 	logoutHandler := appHandlers.NewLogoutHandler(
@@ -187,17 +203,52 @@ func initializeCommands(
 		p.UserAggregateRepo,
 		passwordHasher,
 		passwordService,
-		p.RefreshTokenRepo,
-		sessionCache,
+		sessionInvalidator,
 		auditLogger,
+		clock,
+	)
+
+	refreshSessionHandler := appHandlers.NewRefreshSessionHandler(sessionSvc)
+
+	deleteAccountHandler := appHandlers.NewDeleteAccountHandler(
+		p.UserAggregateRepo,
+		p.OTPRepo,
+		sessionInvalidator,
+		otpService,
+		auditLogger,
+		clock,
+	)
+
+	loginViaOTPHandler := appHandlers.NewLoginViaOTPHandler(
+		p.UserAggregateRepo,
+		p.OTPRepo,
+		otpService,
+		sessionSvc,
 		sessionVersionCache,
+		auditLogger,
+		eventPublisher,
 		clock,
 	)
 
 	getUserHandler := appHandlers.NewGetUserHandler(p.UserAggregateRepo)
 
 	createEmergencyContactHandler := appHandlers.NewEmergencyContactHandler(
-		p.UserRepo,
+		p.UserAggregateRepo,
+		p.EmergencyContactRepo,
+		txManager,
+		clock,
+	)
+
+	listEmergencyContactsHandler := appHandlers.NewListEmergencyContactsHandler(
+		p.EmergencyContactRepo,
+	)
+
+	updateEmergencyContactHandler := appHandlers.NewUpdateEmergencyContactHandler(
+		p.EmergencyContactRepo,
+		clock,
+	)
+
+	deleteEmergencyContactHandler := appHandlers.NewDeleteEmergencyContactHandler(
 		p.EmergencyContactRepo,
 		clock,
 	)
@@ -252,6 +303,36 @@ func initializeCommands(
 		p.UserAllergyRepo,
 	)
 
+	updateUserAllergyHandler := appHandlers.NewUpdateUserAllergyHandler(
+		p.UserAllergyRepo,
+		clock,
+	)
+
+	generateDueRemindersHandler := appHandlers.NewGenerateDueRemindersHandler(
+		p.ReminderRepo,
+		p.NotificationRepo,
+		logger,
+		clock,
+	)
+
+	getAIQuotaHandler := appHandlers.NewGetAIQuotaHandler(
+		p.UserProfileRepo,
+		clock,
+	)
+
+	updateUserHandler := appHandlers.NewUpdateUserHandler(
+		p.UserAggregateRepo,
+		clock,
+	)
+
+	getNotificationPreferencesHandler := appHandlers.NewGetNotificationPreferencesHandler(
+		p.UserProfileRepo,
+	)
+
+	updateNotificationPreferencesHandler := appHandlers.NewUpdateNotificationPreferencesHandler(
+		p.UserProfileRepo,
+	)
+
 	createMedicationHandler := appHandlers.NewCreateMedicationHandler(
 		p.MedicationRepo,
 	)
@@ -276,7 +357,7 @@ func initializeCommands(
 		p.MedicationRepo)
 
 	logMedicationAdherenceHandler := appHandlers.NewLogMedicationAdherenceHandler(
-		p.MedicationRepo, p.MedicationAdherenceRepo)
+		p.MedicationRepo, p.MedicationAdherenceRepo, txManager)
 
 	aiSvc := appServices.NewAIService(ext.AIModel, clock)
 	aiContextBuilder := appServices.NewAIContextBuilder(
@@ -303,6 +384,7 @@ func initializeCommands(
 	sendAIMessageHandler := appHandlers.NewSendAIMessageHandler(
 		p.AIConversationRepo,
 		p.AIMessageRepo,
+		p.UserProfileRepo,
 		aiContextBuilder,
 		aiSvc,
 		clock,
@@ -349,10 +431,75 @@ func initializeCommands(
 		clock,
 	)
 
+	createSupportTicketHandler := appHandlers.NewCreateSupportTicketHandler(
+		p.SupportTicketRepo,
+		clock,
+	)
+
+	getSupportTicketHandler := appHandlers.NewGetSupportTicketHandler(
+		p.SupportTicketRepo,
+		clock,
+	)
+
+	listSupportTicketsHandler := appHandlers.NewListSupportTicketsHandler(
+		p.SupportTicketRepo,
+		clock,
+	)
+
+	addSupportMessageHandler := appHandlers.NewAddSupportMessageHandler(
+		p.SupportTicketRepo,
+		clock,
+	)
+
+	submitFeedbackHandler := appHandlers.NewSubmitFeedbackHandler(
+		p.FeedbackRepo,
+		clock,
+	)
+
+	getFeedbackHandler := appHandlers.NewGetFeedbackHandler(
+		p.FeedbackRepo,
+		clock,
+	)
+
+	listNotificationsHandler := appHandlers.NewListNotificationsHandler(
+		p.NotificationRepo,
+		clock,
+	)
+
+	getNotificationHandler := appHandlers.NewGetNotificationHandler(
+		p.NotificationRepo,
+		clock,
+	)
+
+	markNotificationReadHandler := appHandlers.NewMarkNotificationReadHandler(
+		p.NotificationRepo,
+		clock,
+	)
+
+	markAllNotificationsReadHandler := appHandlers.NewMarkAllNotificationsReadHandler(
+		p.NotificationRepo,
+		clock,
+	)
+
+	listAuditLogsHandler := appHandlers.NewListAuditLogsHandler(
+		auditLogger,
+	)
+
 	messaging.MustRegister(bus, verifDrugScanHandler)
 	messaging.MustRegister(bus, listDrugScansHandler)
 	messaging.MustRegister(bus, getDrugScanHandler)
 	messaging.MustRegister(bus, getDashboardHandler)
+	messaging.MustRegister(bus, createSupportTicketHandler)
+	messaging.MustRegister(bus, getSupportTicketHandler)
+	messaging.MustRegister(bus, listSupportTicketsHandler)
+	messaging.MustRegister(bus, addSupportMessageHandler)
+	messaging.MustRegister(bus, submitFeedbackHandler)
+	messaging.MustRegister(bus, getFeedbackHandler)
+	messaging.MustRegister(bus, listNotificationsHandler)
+	messaging.MustRegister(bus, getNotificationHandler)
+	messaging.MustRegister(bus, markNotificationReadHandler)
+	messaging.MustRegister(bus, markAllNotificationsReadHandler)
+	messaging.MustRegister(bus, listAuditLogsHandler)
 	messaging.MustRegister(bus, createMedicationHandler)
 	messaging.MustRegister(bus, updateMedicationHandler)
 	messaging.MustRegister(bus, completeMedicationHandler)
@@ -365,11 +512,17 @@ func initializeCommands(
 	messaging.MustRegister(bus, deleteVisitHandler)
 	messaging.MustRegister(bus, listVisitHandler)
 	messaging.MustRegister(bus, getVisitHandler)
+	updateAIConversationHandler := appHandlers.NewUpdateAIConversationHandler(
+		p.AIConversationRepo,
+		clock,
+	)
+
 	messaging.MustRegister(bus, createAIConversationHandler)
 	messaging.MustRegister(bus, listAIConversationsHandler)
 	messaging.MustRegister(bus, getAIConversationHandler)
 	messaging.MustRegister(bus, sendAIMessageHandler)
 	messaging.MustRegister(bus, archiveAIConversationHandler)
+	messaging.MustRegister(bus, updateAIConversationHandler)
 
 	messaging.MustRegister(bus, createAllergyHandler)
 	messaging.MustRegister(bus, updateAllergyHandler)
@@ -378,8 +531,17 @@ func initializeCommands(
 	messaging.MustRegister(bus, updateFunFactHandler)
 	messaging.MustRegister(bus, deleteFunFactHandler)
 	messaging.MustRegister(bus, deleteUserAllergyHandler)
+	messaging.MustRegister(bus, updateUserAllergyHandler)
+	messaging.MustRegister(bus, getAIQuotaHandler)
+	messaging.MustRegister(bus, generateDueRemindersHandler)
+	messaging.MustRegister(bus, updateUserHandler)
+	messaging.MustRegister(bus, getNotificationPreferencesHandler)
+	messaging.MustRegister(bus, updateNotificationPreferencesHandler)
 	messaging.MustRegister(bus, createUserAllergiesHandler)
 	messaging.MustRegister(bus, createEmergencyContactHandler)
+	messaging.MustRegister(bus, listEmergencyContactsHandler)
+	messaging.MustRegister(bus, updateEmergencyContactHandler)
+	messaging.MustRegister(bus, deleteEmergencyContactHandler)
 
 	messaging.MustRegister(bus, loginHandler)
 	messaging.MustRegister(bus, registerHandler)
@@ -391,6 +553,9 @@ func initializeCommands(
 	messaging.MustRegister(bus, resetPasswordHandler)
 	messaging.MustRegister(bus, logoutHandler)
 	messaging.MustRegister(bus, changePasswordHandler)
+	messaging.MustRegister(bus, refreshSessionHandler)
+	messaging.MustRegister(bus, deleteAccountHandler)
+	messaging.MustRegister(bus, loginViaOTPHandler)
 
 	messaging.MustRegister(bus, getUserHandler)
 
@@ -399,5 +564,5 @@ func initializeCommands(
 	messaging.MustRegister[appQuery.ListFunFactsQuery, []dto.FunFactDTO](bus, listFunFactsHandler)
 	messaging.MustRegister[appQuery.GetFunFactQuery, *dto.FunFactDTO](bus, getFunFactHandler)
 	messaging.MustRegister[appQuery.ListUserAllergiesQuery, []dto.UserAllergyDTO](bus, listUserAllergiesHandler)
-	return bus, authSvc
+	return bus, authSvc, nil
 }

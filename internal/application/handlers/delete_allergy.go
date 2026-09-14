@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"context"
-	"errors"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	"github.com/victorotene80/medilog-api/internal/domain/repository"
 )
@@ -23,7 +23,7 @@ func (h *DeleteAllergyHandler) Handle(
 	cmd command.DeleteAllergyCommand,
 ) (struct{}, error) {
 	if cmd.ID <= 0 {
-		return struct{}{}, errors.New("allergy id is required")
+		return struct{}{}, application.NewValidation("allergy id is required")
 	}
 
 	existing, err := h.allergyRepository.FindByID(ctx, cmd.ID)
@@ -31,7 +31,7 @@ func (h *DeleteAllergyHandler) Handle(
 		return struct{}{}, err
 	}
 	if existing == nil {
-		return struct{}{}, errors.New("allergy not found")
+		return struct{}{}, application.NewNotFound("allergy not found")
 	}
 
 	if err := h.allergyRepository.Delete(ctx, cmd.ID); err != nil {

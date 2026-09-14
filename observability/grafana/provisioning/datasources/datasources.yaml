@@ -1,81 +1,10 @@
-receivers:
-  otlp:
-    protocols:
-      grpc:
-        endpoint: 0.0.0.0:4317
-      http:
-        endpoint: 0.0.0.0:4318
+apiVersion: 1
 
-processors:
-  memory_limiter:
-    check_interval: 1s
-    limit_mib: 256
-    spike_limit_mib: 64
-
-  resource:
-    attributes:
-      - key: deployment.environment
-        value: local
-        action: upsert
-
-  batch:
-    timeout: 5s
-    send_batch_size: 512
-
-exporters:
-  # TEMPO EXPORTER — Commented out (Tempo service not running)
-  # Uncomment when you add tempo service to docker-compose.yml
-  # otlp/tempo:
-  #   endpoint: localhost:4317
-  #   tls:
-  #     insecure: true
-
-  # PROMETHEUS EXPORTER — Commented out (OTel Collector disabled)
-  # Uncomment when re-enabling OTel Collector
-  # prometheusremotewrite:
-  #   endpoint: http://localhost:9090/api/v1/write
-
-  # LOKI EXPORTER — Commented out (Loki service not running)
-  # Uncomment when you add loki service to docker-compose.yml
-  # otlphttp/loki:
-  #   endpoint: http://localhost:3100/otlp
-
-  debug:
-    verbosity: basic
-
-extensions:
-  health_check:
-    endpoint: 0.0.0.0:13133
-
-  pprof:
-    endpoint: 0.0.0.0:1777
-
-service:
-  telemetry:
-    metrics:
-      readers:
-        - pull:
-            exporter:
-              prometheus:
-                host: 0.0.0.0
-                port: 8888
-
-  extensions: [health_check, pprof]
-
-  # All pipelines commented out since OTel Collector is disabled
-  # Uncomment when ready to re-enable OTel Collector + add Loki/Tempo services
-  # pipelines:
-  #   traces:
-  #     receivers: [otlp]
-  #     processors: [memory_limiter, resource, batch]
-  #     exporters: [otlp/tempo, debug]
-  #
-  #   metrics:
-  #     receivers: [otlp]
-  #     processors: [memory_limiter, resource, batch]
-  #     exporters: [prometheusremotewrite, debug]
-  #
-  #   logs:
-  #     receivers: [otlp]
-  #     processors: [memory_limiter, resource, batch]
-  #     exporters: [otlphttp/loki, debug]
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    uid: prometheus

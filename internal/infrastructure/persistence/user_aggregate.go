@@ -3,27 +3,32 @@ package persistence
 import (
 	"context"
 	"errors"
+	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 	"strings"
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/aggregates"
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence/models"
 	"gorm.io/gorm"
 )
 
 type UserAggregateRepository struct {
 	db *gorm.DB
+	// events drains the aggregate's domain events into the outbox on the same
+	// transaction as the write. See drainAggregateEvents.
+	events appContracts.MessagePublisher
 }
 
-func NewUserAggregateRepository(db *gorm.DB) *UserAggregateRepository {
-	return &UserAggregateRepository{db: db}
+func NewUserAggregateRepository(db *gorm.DB, events appContracts.MessagePublisher) *UserAggregateRepository {
+	return &UserAggregateRepository{db: db, events: events}
 }
 
 func (r *UserAggregateRepository) FindByID(ctx context.Context, id int64) (*aggregates.UserAggregate, error) {
 	var user models.UserModel
 
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("id = ? AND deleted_at IS NULL", id).
 		First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -47,7 +52,7 @@ func (r *UserAggregateRepository) FindByPublicID(
 
 	var user models.UserModel
 
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("public_id = ? AND deleted_at IS NULL", publicID).
 		First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -67,7 +72,7 @@ func (r *UserAggregateRepository) FindByEmail(ctx context.Context, email string)
 
 	var user models.UserModel
 
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("email = ? AND deleted_at IS NULL", email).
 		First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -83,7 +88,7 @@ func (r *UserAggregateRepository) FindByEmail(ctx context.Context, email string)
 func (r *UserAggregateRepository) FindByPhone(ctx context.Context, phone string) (*aggregates.UserAggregate, error) {
 	var user models.UserModel
 
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("phone = ? AND deleted_at IS NULL", phone).
 		First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -99,7 +104,7 @@ func (r *UserAggregateRepository) FindByPhone(ctx context.Context, phone string)
 func (r *UserAggregateRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
 	var count int64
 
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Model(&models.UserModel{}).
 		Where("email = ? AND deleted_at IS NULL", email).
 		Count(&count).Error; err != nil {
@@ -112,7 +117,7 @@ func (r *UserAggregateRepository) ExistsByEmail(ctx context.Context, email strin
 func (r *UserAggregateRepository) ExistsByPhone(ctx context.Context, phone string) (bool, error) {
 	var count int64
 
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Model(&models.UserModel{}).
 		Where("phone = ? AND deleted_at IS NULL", phone).
 		Count(&count).Error; err != nil {
@@ -127,7 +132,7 @@ func (r *UserAggregateRepository) Save(ctx context.Context, agg *aggregates.User
 		return errors.New("user aggregate is required")
 	}
 
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return conn(ctx, r.db).Transaction(func(tx *gorm.DB) error {
 		userModel := models.UserEntityToModel(*agg.User)
 
 		if err := tx.Create(userModel).Error; err != nil {
@@ -150,7 +155,9 @@ func (r *UserAggregateRepository) Save(ctx context.Context, agg *aggregates.User
 			agg.Profile.ID = profileModel.ID
 		}
 
-		return nil
+		// Drained here, on the same transaction as the write: leaving it to the
+		// caller meant most mutations raised events that were silently discarded.
+		return drainAggregateEvents(ctx, tx, r.events, agg)
 	})
 }
 
@@ -159,7 +166,7 @@ func (r *UserAggregateRepository) Update(ctx context.Context, agg *aggregates.Us
 		return errors.New("user aggregate is required")
 	}
 
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return conn(ctx, r.db).Transaction(func(tx *gorm.DB) error {
 		userModel := models.UserEntityToModel(*agg.User)
 
 		if err := tx.Save(userModel).Error; err != nil {
@@ -174,7 +181,9 @@ func (r *UserAggregateRepository) Update(ctx context.Context, agg *aggregates.Us
 			}
 		}
 
-		return nil
+		// Drained here, on the same transaction as the write: leaving it to the
+		// caller meant most mutations raised events that were silently discarded.
+		return drainAggregateEvents(ctx, tx, r.events, agg)
 	})
 }
 
@@ -183,7 +192,7 @@ func (r *UserAggregateRepository) Delete(ctx context.Context, id int64) error {
 		return errors.New("user id is required")
 	}
 
-	result := r.db.WithContext(ctx).
+	result := conn(ctx, r.db).
 		Model(&models.UserModel{}).
 		Where("id = ? AND deleted_at IS NULL", id).
 		UpdateColumn("deleted_at", time.Now().UTC())
@@ -193,7 +202,7 @@ func (r *UserAggregateRepository) Delete(ctx context.Context, id int64) error {
 	}
 
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil
@@ -205,7 +214,7 @@ func (r *UserAggregateRepository) DeleteByPublicID(ctx context.Context, publicID
 		return errors.New("public id is required")
 	}
 
-	result := r.db.WithContext(ctx).
+	result := conn(ctx, r.db).
 		Model(&models.UserModel{}).
 		Where("public_id = ? AND deleted_at IS NULL", publicID).
 		UpdateColumn("deleted_at", time.Now().UTC())
@@ -215,7 +224,7 @@ func (r *UserAggregateRepository) DeleteByPublicID(ctx context.Context, publicID
 	}
 
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil
@@ -234,7 +243,7 @@ func (r *UserAggregateRepository) hydrate(ctx context.Context, user *models.User
 	var profileModel models.UserProfileModel
 	var profile *entities.UserProfile
 
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("user_id = ?", user.ID).
 		First(&profileModel).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -245,7 +254,7 @@ func (r *UserAggregateRepository) hydrate(ctx context.Context, user *models.User
 	}
 
 	var contactModels []models.EmergencyContactModel
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("user_id = ?", user.ID).
 		Find(&contactModels).Error; err != nil {
 		return nil, err
@@ -258,7 +267,7 @@ func (r *UserAggregateRepository) hydrate(ctx context.Context, user *models.User
 	}
 
 	var allergyModels []models.UserAllergyModel
-	if err := r.db.WithContext(ctx).
+	if err := conn(ctx, r.db).
 		Where("user_id = ?", user.ID).
 		Find(&allergyModels).Error; err != nil {
 		return nil, err

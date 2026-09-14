@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	clockpkg "github.com/victorotene80/medilog-api/internal/shared/clock"
+
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
@@ -20,36 +22,39 @@ import (
 type ResetPasswordHandler struct {
 	userRepo        repository.UserAggregateRepository
 	otpRepo         repository.OTPCodeRepository
-	refreshRepo     repository.RefreshTokenRepository
+	sessions        appContracts.SessionInvalidator
 	passwordHasher  contracts.PasswordHasher
 	passwordService *domainServices.PasswordService
 	otpService      *domainServices.OTPService
 	auditLogger     appContracts.AuditLogger
 	clock           func() time.Time
+	isLive          bool
 }
 
 func NewResetPasswordHandler(
 	userRepo repository.UserAggregateRepository,
 	otpRepo repository.OTPCodeRepository,
-	refreshRepo repository.RefreshTokenRepository,
+	sessions appContracts.SessionInvalidator,
 	passwordHasher contracts.PasswordHasher,
 	passwordService *domainServices.PasswordService,
 	otpService *domainServices.OTPService,
 	auditLogger appContracts.AuditLogger,
 	clock func() time.Time,
+	isLive bool,
 ) *ResetPasswordHandler {
 	if clock == nil {
-		clock = func() time.Time { return time.Now().UTC() }
+		clock = clockpkg.Default()
 	}
 	return &ResetPasswordHandler{
 		userRepo:        userRepo,
 		otpRepo:         otpRepo,
-		refreshRepo:     refreshRepo,
+		sessions:        sessions,
 		passwordHasher:  passwordHasher,
 		passwordService: passwordService,
 		otpService:      otpService,
 		auditLogger:     auditLogger,
 		clock:           clock,
+		isLive:          isLive,
 	}
 }
 
@@ -64,24 +69,29 @@ func (h *ResetPasswordHandler) Handle(
 		ctx, cmd.Recipient, string(valueobjects.OTPPurposePasswordReset),
 	)
 	if err != nil || otp == nil {
-		return struct{}{}, errors.New("invalid or expired reset code")
+		return struct{}{}, application.NewValidation("invalid or expired reset code")
 	}
 
-	if !otp.IsValid(now) {
-		return struct{}{}, errors.New("invalid or expired reset code")
-	}
+	bypass := !h.isLive && cmd.OTPCode == "123456"
 
-	if !h.otpService.Verify(cmd.OTPCode, otp.CodeHash) {
-		return struct{}{}, errors.New("invalid or expired reset code")
+	if !bypass {
+		if !otp.IsValid(now) {
+			return struct{}{}, application.NewValidation("invalid or expired reset code")
+		}
+
+		if !h.otpService.Verify(cmd.OTPCode, otp.CodeHash) {
+			recordFailedOTPAttempt(ctx, h.otpRepo, otp)
+			return struct{}{}, application.NewValidation("invalid or expired reset code")
+		}
 	}
 
 	if otp.UserID <= 0 {
-		return struct{}{}, errors.New("invalid reset code")
+		return struct{}{}, application.NewValidation("invalid reset code")
 	}
 
 	agg, err := h.userRepo.FindByID(ctx, otp.UserID)
 	if err != nil || agg == nil {
-		return struct{}{}, errors.New("user not found")
+		return struct{}{}, application.NewNotFound("user not found")
 	}
 
 	if err := h.passwordService.Validate(cmd.NewPassword); err != nil {
@@ -104,8 +114,8 @@ func (h *ResetPasswordHandler) Handle(
 		return struct{}{}, fmt.Errorf("mark OTP used: %w", err)
 	}
 
-	if err := h.refreshRepo.RevokeAllForUser(ctx, otp.UserID, now); err != nil {
-		return struct{}{}, fmt.Errorf("revoke sessions: %w", err)
+	if err := h.sessions.InvalidateAllForUser(ctx, otp.UserID, now); err != nil {
+		return struct{}{}, fmt.Errorf("invalidate sessions: %w", err)
 	}
 
 	if h.auditLogger != nil {

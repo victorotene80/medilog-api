@@ -70,7 +70,15 @@ func (s *DefaultMessagingService) SendSMS(
 		Method: http.MethodPost,
 		URL:    url,
 		Headers: map[string]string{
-			"Authorization": fmt.Sprintf("Bearer %s", s.cfg.LegacyToken),
+			// APIToken, not LegacyToken: BULK_SMS_API_TOKEN is what the loader
+			// requires and what the guard above validates, while
+			// BULK_SMS_API_LEGACY_TOKEN is optional and defaults to "". Sending
+			// the latter meant an operator who set only the mandatory variable
+			// shipped a bare "Bearer " header and got 401 on every send — and
+			// because bulksms is the last provider in the chain and ChainSender
+			// only errors when every provider fails, the dead fallback stayed
+			// invisible until the providers ahead of it were also down.
+			"Authorization": fmt.Sprintf("Bearer %s", s.cfg.APIToken),
 			"Content-Type":  "application/json",
 			"Accept":        "application/json",
 		},

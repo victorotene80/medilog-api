@@ -5,9 +5,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/readmodel"
 	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/persistence/models"
+	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 )
 
@@ -25,7 +26,7 @@ func (r *DashboardRepository) GetByUserID(
 	ctx context.Context,
 	userID int64,
 	now time.Time,
-) (*entities.Dashboard, error) {
+) (*readmodel.Dashboard, error) {
 	user, err := r.getUser(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -34,35 +35,49 @@ func (r *DashboardRepository) GetByUserID(
 		return nil, nil
 	}
 
-	medications, err := r.getActiveMedications(ctx, userID, now)
-	if err != nil {
+	var medications []readmodel.DashboardMedication
+	var visitOverview readmodel.DashboardVisitOverview
+	var medicationOverview readmodel.DashboardMedicationOverview
+	var flaggedDrugOverview readmodel.DashboardFlaggedDrugOverview
+	var funFact *readmodel.DashboardFunFact
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(3)
+
+	g.Go(func() error {
+		var e error
+		medications, e = r.getActiveMedications(gctx, userID, now)
+		return e
+	})
+	g.Go(func() error {
+		var e error
+		visitOverview, e = r.getVisitOverview(gctx, userID, now)
+		return e
+	})
+	g.Go(func() error {
+		var e error
+		medicationOverview, e = r.getMedicationOverview(gctx, userID)
+		return e
+	})
+	g.Go(func() error {
+		var e error
+		flaggedDrugOverview, e = r.getFlaggedDrugOverview(gctx, userID)
+		return e
+	})
+	g.Go(func() error {
+		var e error
+		funFact, e = r.getFunFact(gctx)
+		return e
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
-	visitOverview, err := r.getVisitOverview(ctx, userID, now)
-	if err != nil {
-		return nil, err
-	}
-
-	medicationOverview, err := r.getMedicationOverview(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	flaggedDrugOverview, err := r.getFlaggedDrugOverview(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	funFact, err := r.getFunFact(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return &entities.Dashboard{
+	return &readmodel.Dashboard{
 		User:        *user,
 		Medications: medications,
-		HealthOverview: entities.DashboardHealthOverview{
+		HealthOverview: readmodel.DashboardHealthOverview{
 			Visits:       visitOverview,
 			Medications:  medicationOverview,
 			FlaggedDrugs: flaggedDrugOverview,
@@ -71,9 +86,9 @@ func (r *DashboardRepository) GetByUserID(
 	}, nil
 }
 
-func (r *DashboardRepository) getUser(ctx context.Context, userID int64) (*entities.DashboardUser, error) {
+func (r *DashboardRepository) getUser(ctx context.Context, userID int64) (*readmodel.DashboardUser, error) {
 	var user models.UserModel
-	err := r.db.WithContext(ctx).
+	err := conn(ctx, r.db).
 		Select([]string{"id", "first_name", "last_name", "avatar_url"}).
 		Where("id = ? AND deleted_at IS NULL", userID).
 		First(&user).Error
@@ -84,7 +99,7 @@ func (r *DashboardRepository) getUser(ctx context.Context, userID int64) (*entit
 		return nil, err
 	}
 
-	return &entities.DashboardUser{
+	return &readmodel.DashboardUser{
 		ID:        user.ID,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
@@ -96,9 +111,9 @@ func (r *DashboardRepository) getActiveMedications(
 	ctx context.Context,
 	userID int64,
 	now time.Time,
-) ([]entities.DashboardMedication, error) {
+) ([]readmodel.DashboardMedication, error) {
 	var medicationModels []models.MedicationModel
-	err := r.db.WithContext(ctx).
+	err := conn(ctx, r.db).
 		Select([]string{
 			"id",
 			"public_id",
@@ -113,7 +128,12 @@ func (r *DashboardRepository) getActiveMedications(
 			"start_date",
 			"created_at",
 		}).
-		Where("user_id = ? AND is_completed = false AND (end_date IS NULL OR end_date >= ?)", userID, now.Format("2006-01-02")).
+		Where(
+			"user_id = ? AND is_completed = false"+
+				" AND (start_date IS NULL OR start_date <= ?)"+
+				" AND (end_date IS NULL OR end_date >= ?)",
+			userID, now.Format("2006-01-02"), now.Format("2006-01-02"),
+		).
 		Order("COALESCE(start_date, created_at::date) DESC, created_at DESC").
 		Limit(3).
 		Find(&medicationModels).Error
@@ -121,11 +141,11 @@ func (r *DashboardRepository) getActiveMedications(
 		return nil, err
 	}
 
-	medications := make([]entities.DashboardMedication, 0, len(medicationModels))
+	medications := make([]readmodel.DashboardMedication, 0, len(medicationModels))
 	medicationIDs := make([]int64, 0, len(medicationModels))
 	for _, medication := range medicationModels {
 		medicationIDs = append(medicationIDs, medication.ID)
-		medications = append(medications, entities.DashboardMedication{
+		medications = append(medications, readmodel.DashboardMedication{
 			ID:             medication.ID,
 			PublicID:       medication.PublicID,
 			Name:           medication.Name,
@@ -168,9 +188,11 @@ func (r *DashboardRepository) getMedicationTimes(
 	}
 
 	var rows []medicationTimeRow
-	err := r.db.WithContext(ctx).
+	err := conn(ctx, r.db).
 		Table("medication_times").
-		Select("medication_id, to_char(time_value, 'HH24:MI') AS time_value").
+		// time_value is a zero-date UTC instant; a bare cast would shift under a
+		// non-UTC session TimeZone. See readmodel/reminder.go and reminder.go:39.
+		Select("medication_id, to_char((time_value AT TIME ZONE 'UTC')::time, 'HH24:MI') AS time_value").
 		Where("medication_id IN ? AND deleted_at IS NULL", medicationIDs).
 		Order("time_value ASC").
 		Scan(&rows).Error
@@ -190,8 +212,8 @@ func (r *DashboardRepository) getVisitOverview(
 	ctx context.Context,
 	userID int64,
 	now time.Time,
-) (entities.DashboardVisitOverview, error) {
-	var overview entities.DashboardVisitOverview
+) (readmodel.DashboardVisitOverview, error) {
+	var overview readmodel.DashboardVisitOverview
 
 	total, err := r.count(ctx, &models.VisitModel{}, "user_id = ?", userID)
 	if err != nil {
@@ -229,7 +251,7 @@ func (r *DashboardRepository) getMonthlyVisitCounts(
 	yearEnd := yearStart.AddDate(1, 0, 0)
 
 	var rows []monthlyVisitRow
-	err := r.db.WithContext(ctx).
+	err := conn(ctx, r.db).
 		Table("visits").
 		Select("EXTRACT(MONTH FROM visit_date)::int AS month, COUNT(*)::int AS total").
 		Where("user_id = ? AND visit_date >= ? AND visit_date < ? AND deleted_at IS NULL", userID, yearStart, yearEnd).
@@ -251,8 +273,8 @@ func (r *DashboardRepository) getMonthlyVisitCounts(
 func (r *DashboardRepository) getMedicationOverview(
 	ctx context.Context,
 	userID int64,
-) (entities.DashboardMedicationOverview, error) {
-	var overview entities.DashboardMedicationOverview
+) (readmodel.DashboardMedicationOverview, error) {
+	var overview readmodel.DashboardMedicationOverview
 
 	total, err := r.count(ctx, &models.MedicationModel{}, "user_id = ?", userID)
 	if err != nil {
@@ -272,8 +294,8 @@ func (r *DashboardRepository) getMedicationOverview(
 func (r *DashboardRepository) getFlaggedDrugOverview(
 	ctx context.Context,
 	userID int64,
-) (entities.DashboardFlaggedDrugOverview, error) {
-	var overview entities.DashboardFlaggedDrugOverview
+) (readmodel.DashboardFlaggedDrugOverview, error) {
+	var overview readmodel.DashboardFlaggedDrugOverview
 
 	total, err := r.count(ctx, &models.DrugScanModel{}, "user_id = ?", userID)
 	if err != nil {
@@ -281,19 +303,18 @@ func (r *DashboardRepository) getFlaggedDrugOverview(
 	}
 	overview.Total = total
 
-	// The dashboard contract exposes this as "completed"; product meaning is failed or unverified scans.
 	flagged, err := r.count(ctx, &models.DrugScanModel{}, "user_id = ? AND is_verified = false", userID)
 	if err != nil {
 		return overview, err
 	}
-	overview.Completed = flagged
+	overview.Flagged = flagged
 
 	return overview, nil
 }
 
-func (r *DashboardRepository) getFunFact(ctx context.Context) (*entities.DashboardFunFact, error) {
+func (r *DashboardRepository) getFunFact(ctx context.Context) (*readmodel.DashboardFunFact, error) {
 	var fact models.FunFactModel
-	err := r.db.WithContext(ctx).
+	err := conn(ctx, r.db).
 		Select("text").
 		Where("is_active = ?", true).
 		Order("RANDOM()").
@@ -305,12 +326,12 @@ func (r *DashboardRepository) getFunFact(ctx context.Context) (*entities.Dashboa
 		return nil, err
 	}
 
-	return &entities.DashboardFunFact{Text: fact.Text}, nil
+	return &readmodel.DashboardFunFact{Text: fact.Text}, nil
 }
 
 func (r *DashboardRepository) count(ctx context.Context, model any, query string, args ...any) (int, error) {
 	var count int64
-	err := r.db.WithContext(ctx).Model(model).Where(query, args...).Count(&count).Error
+	err := conn(ctx, r.db).Model(model).Where(query, args...).Where("deleted_at IS NULL").Count(&count).Error
 	if err != nil {
 		return 0, err
 	}

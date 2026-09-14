@@ -125,11 +125,24 @@ func EmergencyContactDTOToResponse(result *dto.EmergencyContactDTO) response.Eme
 		Name:         result.Name,
 		Relationship: result.Relationship,
 		Phone:        result.Phone,
-		Address:      result.Address,
+		CountryCode:  result.CountryCode,
 		IsPrimary:    result.IsPrimary,
 		CreatedAt:    result.CreatedAt,
 		UpdatedAt:    result.UpdatedAt,
 	}
+}
+
+// EmergencyContactDTOsToResponse maps a list of contacts for GET /emergency-contacts.
+func EmergencyContactDTOsToResponse(results []*dto.EmergencyContactDTO) response.ListEmergencyContactsResponse {
+	contacts := make([]response.EmergencyContactResponse, 0, len(results))
+	for _, c := range results {
+		if c == nil {
+			continue
+		}
+		contacts = append(contacts, EmergencyContactDTOToResponse(c))
+	}
+
+	return response.ListEmergencyContactsResponse{Contacts: contacts}
 }
 
 func GetUserDTOToResponse(result *dto.GetUserDTO) response.GetUserResponse {
@@ -159,6 +172,8 @@ func GetUserDTOToResponse(result *dto.GetUserDTO) response.GetUserResponse {
 		BloodType:           result.BloodType,
 		Height:              result.Height,
 		Weight:              result.Weight,
+		WeightUnit:          result.WeightUnit,
+		TemperatureUnit:     result.TemperatureUnit,
 		Country:             result.Country,
 		AvatarURL:           result.AvatarURL,
 		CountryCode:         result.CountryCode,
@@ -244,6 +259,7 @@ func UserAllergyDTOToResponse(d dto.UserAllergyDTO) response.UserAllergyResponse
 		CategoryStr: d.CategoryStr,
 		IsCustom:    d.IsCustom,
 		CreatedAt:   d.CreatedAt,
+		UpdatedAt:   d.UpdatedAt,
 	}
 }
 
@@ -343,8 +359,8 @@ func DashboardDTOToResponse(d *dto.DashboardDTO) response.DashboardResponse {
 				Total:     d.HealthOverview.Medications.Total,
 			},
 			FlaggedDrugs: response.DashboardFlaggedDrugOverviewResponse{
-				Completed: d.HealthOverview.FlaggedDrugs.Completed,
-				Total:     d.HealthOverview.FlaggedDrugs.Total,
+				Flagged: d.HealthOverview.FlaggedDrugs.Flagged,
+				Total:   d.HealthOverview.FlaggedDrugs.Total,
 			},
 		},
 		FunFact: funFact,
@@ -386,16 +402,14 @@ func AIConversationDTOToResponse(d dto.AIConversationDTO) response.AIConversatio
 	}
 
 	return response.AIConversationResponse{
-		PublicID:            d.PublicID,
-		Title:               d.Title,
-		RelatedMedicationID: d.RelatedMedicationID,
-		RelatedVisitID:      d.RelatedVisitID,
-		Summary:             d.Summary,
-		Status:              d.Status,
-		LastMessageAt:       d.LastMessageAt,
-		Messages:            messages,
-		CreatedAt:           d.CreatedAt,
-		UpdatedAt:           d.UpdatedAt,
+		PublicID:      d.PublicID,
+		Title:         d.Title,
+		Summary:       d.Summary,
+		Status:        d.Status,
+		LastMessageAt: d.LastMessageAt,
+		Messages:      messages,
+		CreatedAt:     d.CreatedAt,
+		UpdatedAt:     d.UpdatedAt,
 	}
 }
 
@@ -409,7 +423,6 @@ func AIConversationDTOsToResponse(ds []dto.AIConversationDTO) []response.AIConve
 
 func AIMessageDTOToResponse(d dto.AIMessageDTO) response.AIMessageResponse {
 	return response.AIMessageResponse{
-		ID:        d.ID,
 		Role:      d.Role,
 		Content:   d.Content,
 		Meta:      d.Meta,
@@ -430,6 +443,33 @@ func SendAIMessageResultDTOToResponse(d *dto.SendAIMessageResultDTO) response.Se
 		PromptTokens: d.PromptTokens,
 		OutputTokens: d.OutputTokens,
 		ContextMeta:  d.ContextMeta,
+		Quota:        AIQuotaDTOToResponse(d.Quota),
+	}
+}
+
+func NotificationPreferencesDTOToResponse(d dto.NotificationPreferencesDTO) response.NotificationPreferencesResponse {
+	return response.NotificationPreferencesResponse{
+		MedicationRemindersEnabled:  d.MedicationRemindersEnabled,
+		RefillRemindersEnabled:      d.RefillRemindersEnabled,
+		AppointmentRemindersEnabled: d.AppointmentRemindersEnabled,
+		AIHealthTipsEnabled:         d.AIHealthTipsEnabled,
+		SupportUpdatesEnabled:       d.SupportUpdatesEnabled,
+		AppUpdatesEnabled:           d.AppUpdatesEnabled,
+		PushEnabled:                 d.PushEnabled,
+		EmailEnabled:                d.EmailEnabled,
+		SMSEnabled:                  d.SMSEnabled,
+		WhatsAppEnabled:             d.WhatsAppEnabled,
+		Timezone:                    d.Timezone,
+	}
+}
+
+func AIQuotaDTOToResponse(d dto.AIQuotaDTO) response.AIQuotaResponse {
+	return response.AIQuotaResponse{
+		Used:      d.Used,
+		Total:     d.Total,
+		Remaining: d.Remaining,
+		IsPro:     d.IsPro,
+		ResetsAt:  d.ResetsAt,
 	}
 }
 
@@ -496,4 +536,43 @@ func nonZeroTimePtr(value time.Time) *time.Time {
 		return nil
 	}
 	return &value
+}
+
+// ListAuditLogsDTOToResponse maps the audit trail onto its wire type. The
+// endpoint previously encoded a map[string]any holding *models.AuditLogModel, so
+// the response keys were Go field names and any column added to the table
+// shipped to clients automatically.
+func ListAuditLogsDTOToResponse(d *dto.ListAuditLogsDTO) response.ListAuditLogsResponse {
+	if d == nil {
+		return response.ListAuditLogsResponse{Logs: []*response.AuditLogResponse{}}
+	}
+
+	logs := make([]*response.AuditLogResponse, 0, len(d.Logs))
+	for _, l := range d.Logs {
+		if l == nil {
+			continue
+		}
+		logs = append(logs, &response.AuditLogResponse{
+			ID:          l.ID,
+			Action:      l.Action,
+			UserID:      l.UserID,
+			ActorID:     l.ActorID,
+			SessionID:   l.SessionID,
+			IPAddress:   l.IPAddress,
+			UserAgent:   l.UserAgent,
+			CountryCode: l.CountryCode,
+			TargetID:    l.TargetID,
+			Metadata:    l.Metadata,
+			Success:     l.Success,
+			OccurredAt:  l.OccurredAt,
+			CreatedAt:   l.CreatedAt,
+		})
+	}
+
+	return response.ListAuditLogsResponse{
+		Logs:   logs,
+		Total:  d.Total,
+		Limit:  d.Limit,
+		Offset: d.Offset,
+	}
 }

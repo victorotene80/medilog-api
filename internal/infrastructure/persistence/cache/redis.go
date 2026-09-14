@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	infraErrors "github.com/victorotene80/medilog-api/internal/infrastructure"
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
+	infraErrors "github.com/victorotene80/medilog-api/internal/infrastructure"
 )
 
 type RedisCache[K comparable, V any] struct {
@@ -38,7 +38,6 @@ func NewRedisCache[K comparable, V any](
 func (c *RedisCache[K, V]) key(k K) string {
 	return c.prefix + fmt.Sprint(k)
 }
-
 
 func (c *RedisCache[K, V]) Set(
 	ctx context.Context,

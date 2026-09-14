@@ -36,3 +36,14 @@ type DeleteUserAllergyCommand struct {
 	UserID   int64
 	PublicID string
 }
+
+// UpdateUserAllergyCommand fully replaces one of the user's own allergy records,
+// addressed by its public id.
+type UpdateUserAllergyCommand struct {
+	UserID      int64
+	PublicID    string
+	Name        string
+	Description *string
+	Severity    *int16
+	Category    int
+}

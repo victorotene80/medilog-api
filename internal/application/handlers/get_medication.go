@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
 	"github.com/victorotene80/medilog-api/internal/application/mapper"
 	"github.com/victorotene80/medilog-api/internal/application/query"
@@ -25,7 +25,7 @@ func (h *GetMedicationHandler) Handle(ctx context.Context, q query.GetMedication
 		return nil, fmt.Errorf("find medication: %w", err)
 	}
 	if agg == nil {
-		return nil, errors.New("medication not found")
+		return nil, application.NewNotFound("medication not found")
 	}
 
 	result := mapper.MedicationAggregateToDTO(agg)

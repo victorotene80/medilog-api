@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/events/types"
 	"github.com/victorotene80/medilog-api/internal/domain/valueobjects"
 )
 
@@ -40,6 +41,7 @@ func (a *AIConversationAggregate) AddMessage(msg *entities.AIMessage, now time.T
 	}
 	a.Messages = append(a.Messages, msg)
 	a.Conversation.TouchLastMessage(now)
+	a.RaiseEvent(types.NewAIMessageAddedEvent(a.Conversation.ID, string(msg.Role)))
 	return nil
 }
 
@@ -112,6 +114,7 @@ func (a *AIConversationAggregate) Archive(now time.Time) error {
 		return errors.New("conversation is not active")
 	}
 	a.Conversation.Archive(now)
+	a.RaiseEvent(types.NewAIConversationArchivedEvent(a.Conversation.ID))
 	return nil
 }
 

@@ -3,8 +3,6 @@ services:
     image: postgres:17-alpine
     container_name: medilog_postgres
     restart: unless-stopped
-    # Previous default used the Postgres image command with no explicit memory tuning.
-    # command: ["postgres"]
     mem_limit: "${POSTGRES_MEMORY_LIMIT:-512MB}"
     command:
       - "postgres"
@@ -19,10 +17,6 @@ services:
       - "-c"
       - "max_connections=${POSTGRES_MAX_CONNECTIONS:-50}"
     ports:
-      # From your Mac: localhost:5433
-      # From Docker containers: postgres:5432
-      # Previous public server binding:
-      # - "5433:5432"
       - "127.0.0.1:5433:5432"
     environment:
       POSTGRES_USER: ${DB_USER:-medilog}
@@ -41,11 +35,7 @@ services:
     container_name: medilog_redis
     restart: unless-stopped
     ports:
-      # Previous public server binding:
-      # - "6379:6379"
       - "127.0.0.1:6379:6379"
-    # Previous default kept Redis uncapped:
-    # command: redis-server --requirepass ${REDIS_PASSWORD:-redis}
     mem_limit: "${REDIS_MEMORY_LIMIT:-512m}"
     command:
       - "redis-server"
@@ -63,61 +53,63 @@ services:
       timeout: 5s
       retries: 5
 
-  # Kafka + RabbitMQ — COMMENTED OUT
-  # Uncomment to re-enable messaging infrastructure.
-  # kafka:
-  #   image: confluentinc/cp-kafka:7.6.0
-  #   container_name: medilog_kafka
-  #   restart: unless-stopped
-  #   ports:
-  #     - "9092:9092"
-  #     - "29092:29092"
-  #   environment:
-  #     KAFKA_NODE_ID: 1
-  #     KAFKA_PROCESS_ROLES: broker,controller
-  #     KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-  #     KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-  #     KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_DOCKER
-  #     KAFKA_LISTENERS: PLAINTEXT_HOST://0.0.0.0:9092,PLAINTEXT_DOCKER://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
-  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_HOST://localhost:9092,PLAINTEXT_DOCKER://kafka:29092
-  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_DOCKER:PLAINTEXT,CONTROLLER:PLAINTEXT
-  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-  #     KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-  #     CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
-  #   healthcheck:
-  #     test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #
-  # rabbitmq:
-  #   image: rabbitmq:3.13-management
-  #   container_name: medilog_rabbitmq
-  #   restart: unless-stopped
-  #   ports:
-  #     - "5672:5672"
-  #     - "15672:15672"
-  #   environment:
-  #     RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
-  #     RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
-  #   healthcheck:
-  #     test: ["CMD", "rabbitmq-diagnostics", "ping"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #
-  # kafka-ui:
-  #   image: provectuslabs/kafka-ui:v0.7.2
-  #   container_name: medilog_kafka_ui
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8090:8080"
-  #   environment:
-  #     KAFKA_CLUSTERS_0_NAME: local
-  #     KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-  #   depends_on:
-  #     kafka:
-  #       condition: service_healthy
+  # Messaging stack — enabled with: docker compose --profile messaging up
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: medilog_kafka
+    restart: unless-stopped
+    profiles: ["messaging"]
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_DOCKER
+      KAFKA_LISTENERS: PLAINTEXT_HOST://0.0.0.0:9092,PLAINTEXT_DOCKER://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_HOST://localhost:9092,PLAINTEXT_DOCKER://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_DOCKER:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: medilog_rabbitmq
+    restart: unless-stopped
+    profiles: ["messaging"]
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: medilog_kafka_ui
+    restart: unless-stopped
+    profiles: ["messaging"]
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    depends_on:
+      kafka:
+        condition: service_healthy
 
   # Observability stack — Netdata (active lightweight setup)
   netdata:
@@ -127,8 +119,6 @@ services:
     hostname: medilog-local
     mem_limit: "${NETDATA_MEMORY_LIMIT:-256m}"
     ports:
-      # Previous public server binding:
-      # - "19999:19999"
       - "127.0.0.1:19999:19999"
     environment:
       DOCKER_HOST: unix:///var/run/docker.sock
@@ -138,48 +128,49 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - netdata_lib:/var/lib/netdata
       - netdata_cache:/var/cache/netdata
-    # Official host-level Netdata setup can enable broader host monitoring,
-    # but those options are left commented to keep this local stack lean.
-    # pid: host
-    # network_mode: host
-    # cap_add:
-    #   - SYS_PTRACE
-    #   - SYS_ADMIN
-    # security_opt:
-    #   - apparmor:unconfined
 
-  # Observability stack — Prometheus + Grafana (previous implementation)
-  # prometheus:
-  #   image: docker.io/prom/prometheus:v2.55.1
-  #   container_name: medilog_prometheus
-  #   restart: unless-stopped
-  #   command:
-  #     - "--config.file=/etc/prometheus/prometheus.yml"
-  #     - "--storage.tsdb.path=/prometheus"
-  #     - "--web.enable-remote-write-receiver"
-  #   volumes:
-  #     - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-  #     - prometheus_data:/prometheus
-  #   ports:
-  #     - "9090:9090"
-  #   extra_hosts:
-  #     - "host.docker.internal:host-gateway"
+  # Observability stack — OTel collector (used when OTEL_ENABLED=true).
+  # Enabled with: docker compose --profile observability up
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0
+    container_name: medilog_otel_collector
+    restart: unless-stopped
+    profiles: ["observability"]
+    command: ["--config=/etc/otel/config.alloy"]
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/otel/config.alloy:ro
+    ports:
+      - "4317:4317"
 
-  # grafana:
-  #   image: docker.io/grafana/grafana:10.4.2
-  #   container_name: medilog_grafana
-  #   restart: unless-stopped
-  #   environment:
-  #     GF_AUTH_ANONYMOUS_ENABLED: "true"
-  #     GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
-  #     GF_AUTH_DISABLE_LOGIN_FORM: "true"
-  #   volumes:
-  #     - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
-  #     - grafana_data:/var/lib/grafana
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - prometheus
+  # Observability stack — Prometheus + Grafana (previous implementation).
+  # Enabled with: docker compose --profile observability up
+  prometheus:
+    image: docker.io/prom/prometheus:v2.55.1
+    container_name: medilog_prometheus
+    restart: unless-stopped
+    profiles: ["observability"]
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-remote-write-receiver"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: docker.io/grafana/grafana:10.4.2
+    container_name: medilog_grafana
+    restart: unless-stopped
+    profiles: ["observability"]
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
 
   # Application
   api:
@@ -189,7 +180,6 @@ services:
     image: medilog-api-api:latest
     container_name: medilog_api
     restart: unless-stopped
-    # Previous default left the app container without a Compose memory hint.
     mem_limit: "${API_MEMORY_LIMIT:-512m}"
     logging:
       driver: json-file
@@ -197,8 +187,6 @@ services:
         max-size: "10m"
         max-file: "3"
     ports:
-      # Previous public server binding:
-      # - "8080:8080"
       - "127.0.0.1:8080:8080"
     env_file:
       - .env
@@ -207,41 +195,42 @@ services:
       # These override any local-development values in .env.
       DB_HOST: postgres
       DB_PORT: 5432
+      # The compose Postgres serves plaintext only. DB_SSLMODE defaults to
+      # require so that a real deployment cannot fall back to an unencrypted
+      # connection by omission; local development opts out here, explicitly.
+      DB_SSLMODE: disable
 
       REDIS_HOST: redis
       REDIS_PORT: 6379
 
       # Go runtime memory hints for local Compose.
-      # Previous default left Go GC unconstrained by Compose.
       GOMEMLIMIT: ${API_GOMEMLIMIT:-384MiB}
       GOGC: ${API_GOGC:-75}
 
-      #KAFKA_BROKERS: kafka:29092
-      #RABBITMQ_DSN: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
+      # Messaging (opt-in): run `docker compose --profile messaging up`.
+      KAFKA_BROKERS: kafka:29092
+      RABBITMQ_DSN: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
 
-      # Telemetry — COMMENTED OUT
-      #OTEL_ENABLED: "true"
-      #OTEL_SERVICE_NAME: medilog-api
-      #OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-0.1.0}
-      #OTEL_EXPORTER_ENDPOINT: otel-collector:4317
-      #OTEL_EXPORTER_INSECURE: "true"
+      # Telemetry (opt-in): run `docker compose --profile observability up`.
+      OTEL_ENABLED: ${OTEL_ENABLED:-false}
+      OTEL_SERVICE_NAME: medilog-api
+      OTEL_SERVICE_VERSION: ${OTEL_SERVICE_VERSION:-0.1.0}
+      OTEL_EXPORTER_ENDPOINT: otel-collector:4317
+      OTEL_EXPORTER_INSECURE: "true"
+
+      # Schema management.
+      DB_AUTO_MIGRATE: ${DB_AUTO_MIGRATE:-false}
+      DB_VERIFY_SCHEMA: ${DB_VERIFY_SCHEMA:-true}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      #rabbitmq:
-      #  condition: service_healthy
-      #kafka:
-      #  condition: service_healthy
-      #otel-collector:
-      #  condition: service_started
 
 volumes:
   medilog_postgres_data:
   redis_data:
   netdata_lib:
   netdata_cache:
-  # Prometheus/Grafana volumes kept commented for easy rollback.
-  # prometheus_data:
-  # grafana_data:
+  prometheus_data:
+  grafana_data:

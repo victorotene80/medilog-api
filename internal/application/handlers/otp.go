@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
@@ -22,6 +22,7 @@ type RequestOTPHandler struct {
 	otpService *domainServices.OTPService
 	smsSender  appContracts.SMSSender
 	clock      func() time.Time
+	isLive     bool
 }
 
 func NewRequestOTPHandler(
@@ -30,6 +31,7 @@ func NewRequestOTPHandler(
 	otpService *domainServices.OTPService,
 	smsSender appContracts.SMSSender,
 	clock func() time.Time,
+	isLive bool,
 ) *RequestOTPHandler {
 	if clock == nil {
 		clock = func() time.Time {
@@ -43,6 +45,7 @@ func NewRequestOTPHandler(
 		otpService: otpService,
 		smsSender:  smsSender,
 		clock:      clock,
+		isLive:     isLive,
 	}
 }
 
@@ -52,12 +55,7 @@ func (h *RequestOTPHandler) Handle(
 ) (*dto.RequestOTPResultDTO, error) {
 	recipient := strings.TrimSpace(cmd.Recipient)
 	if recipient == "" {
-		return nil, errors.New("recipient is required")
-	}
-
-	userID, err := h.resolveOTPUserID(ctx, recipient)
-	if err != nil {
-		return nil, err
+		return nil, application.NewValidation("recipient is required")
 	}
 
 	channel, err := valueobjects.NewOTPChannel(strings.TrimSpace(cmd.Channel))
@@ -70,7 +68,26 @@ func (h *RequestOTPHandler) Handle(
 		return nil, err
 	}
 
+
+
 	now := h.clock().UTC()
+
+	userID, found, err := h.resolveOTPUserID(ctx, recipient)
+	if err != nil {
+		return nil, err
+	}
+
+	// Keep the response uniform whether or not the recipient is a registered
+	// user, so callers cannot enumerate accounts.
+	if !found {
+		return &dto.RequestOTPResultDTO{
+			Recipient: recipient,
+			Channel:   channel.String(),
+			Purpose:   purpose.String(),
+			ExpiresAt: now.Add(h.otpService.TTL()),
+			Message:   "OTP sent successfully",
+		}, nil
+	}
 
 	if err := h.otpRepo.InvalidatePreviousByRecipientAndPurpose(
 		ctx,
@@ -91,6 +108,15 @@ func (h *RequestOTPHandler) Handle(
 		return nil, fmt.Errorf("generate OTP: %w", err)
 	}
 
+	if !h.isLive {
+		plainCode = "123456"
+		hash, hashErr := h.otpService.Hash(plainCode)
+		if hashErr != nil {
+			return nil, fmt.Errorf("hash test OTP: %w", hashErr)
+		}
+		otp.CodeHash = hash
+	}
+
 	if err := h.otpRepo.Save(ctx, otp); err != nil {
 		return nil, fmt.Errorf("save OTP: %w", err)
 	}
@@ -106,9 +132,12 @@ func (h *RequestOTPHandler) Handle(
 		expiresInMinutes,
 	)
 
-	if channel == valueobjects.OTPChannelSMS {
+	if h.isLive {
 		if h.smsSender == nil {
-			return nil, errors.New("sms sender is required")
+			// A misconfigured deployment, not a bad request: NewValidation here would
+			// blame the client for a missing server dependency and name an internal
+			// collaborator in the message.
+			return nil, fmt.Errorf("otp delivery unavailable: no sms sender configured")
 		}
 
 		if err := h.smsSender.Send(ctx, recipient, message); err != nil {
@@ -155,12 +184,12 @@ func (h *VerifyOTPHandler) Handle(
 ) (*dto.VerifyOTPResultDTO, error) {
 	recipient := strings.TrimSpace(cmd.Recipient)
 	if recipient == "" {
-		return nil, errors.New("recipient is required")
+		return nil, application.NewValidation("recipient is required")
 	}
 
 	code := strings.TrimSpace(cmd.Code)
 	if code == "" {
-		return nil, errors.New("OTP code is required")
+		return nil, application.NewValidation("OTP code is required")
 	}
 
 	channel, err := valueobjects.NewOTPChannel(strings.TrimSpace(cmd.Channel))
@@ -183,21 +212,22 @@ func (h *VerifyOTPHandler) Handle(
 	}
 
 	if otp == nil {
-		return nil, errors.New("invalid or expired OTP")
+		return nil, application.NewValidation("invalid or expired OTP")
 	}
 
 	now := h.clock().UTC()
 
 	if !otp.IsValid(now) {
-		return nil, errors.New("invalid or expired OTP")
+		return nil, application.NewValidation("invalid or expired OTP")
 	}
 
 	if otp.Channel != channel.String() {
-		return nil, errors.New("invalid or expired OTP")
+		return nil, application.NewValidation("invalid or expired OTP")
 	}
 
 	if !h.otpService.Verify(code, otp.CodeHash) {
-		return nil, errors.New("invalid or expired OTP")
+		recordFailedOTPAttempt(ctx, h.otpRepo, otp)
+		return nil, application.NewValidation("invalid or expired OTP")
 	}
 
 	otp.MarkUsed(now)
@@ -266,33 +296,33 @@ func buildOTPMessage(
 func (h *RequestOTPHandler) resolveOTPUserID(
 	ctx context.Context,
 	recipient string,
-) (int64, error) {
+) (int64, bool, error) {
 	recipient = strings.TrimSpace(recipient)
 	if recipient == "" {
-		return 0, errors.New("recipient is required")
+		return 0, false, application.NewValidation("recipient is required")
 	}
 
 	if strings.Contains(recipient, "@") {
 		user, err := h.userRepo.FindByEmail(ctx, recipient)
 		if err != nil {
-			return 0, fmt.Errorf("find user by email: %w", err)
+			return 0, false, fmt.Errorf("find user by email: %w", err)
 		}
 
 		if user == nil {
-			return 0, errors.New("user not found")
+			return 0, false, nil
 		}
 
-		return user.ID, nil
+		return user.ID, true, nil
 	}
 
 	user, err := h.userRepo.FindByPhone(ctx, recipient)
 	if err != nil {
-		return 0, fmt.Errorf("find user by phone: %w", err)
+		return 0, false, fmt.Errorf("find user by phone: %w", err)
 	}
 
 	if user == nil {
-		return 0, errors.New("user not found")
+		return 0, false, nil
 	}
 
-	return user.ID, nil
+	return user.ID, true, nil
 }

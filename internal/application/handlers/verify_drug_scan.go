@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	clockpkg "github.com/victorotene80/medilog-api/internal/shared/clock"
+
 	"context"
 	"fmt"
 	"strings"
@@ -31,7 +33,7 @@ func NewVerifyDrugScanHandler(
 	clock func() time.Time,
 ) *VerifyDrugScanHandler {
 	if clock == nil {
-		clock = func() time.Time { return time.Now().UTC() }
+		clock = clockpkg.Default()
 	}
 	return &VerifyDrugScanHandler{
 		drugScans:           drugScans,

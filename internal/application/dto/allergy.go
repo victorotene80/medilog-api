@@ -21,4 +21,5 @@ type UserAllergyDTO struct {
 	CategoryStr string
 	IsCustom    bool
 	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }

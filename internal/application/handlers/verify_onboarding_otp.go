@@ -1,13 +1,15 @@
 package handlers
 
 import (
+	clockpkg "github.com/victorotene80/medilog-api/internal/shared/clock"
+
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
@@ -34,7 +36,7 @@ func NewVerifyOnboardingOTPHandler(
 	clock func() time.Time,
 ) *VerifyOnboardingOTPHandler {
 	if clock == nil {
-		clock = func() time.Time { return time.Now().UTC() }
+		clock = clockpkg.Default()
 	}
 
 	return &VerifyOnboardingOTPHandler{
@@ -53,7 +55,7 @@ func (h *VerifyOnboardingOTPHandler) Handle(
 
 	recipient := strings.TrimSpace(cmd.Recipient)
 	if recipient == "" {
-		return nil, errors.New("recipient is required")
+		return nil, application.NewValidation("recipient is required")
 	}
 
 	channel, err := valueobjects.NewOTPChannel(strings.TrimSpace(cmd.Channel))
@@ -68,12 +70,12 @@ func (h *VerifyOnboardingOTPHandler) Handle(
 
 	code := strings.TrimSpace(cmd.Code)
 	if code == "" {
-		return nil, errors.New("code is required")
+		return nil, application.NewValidation("code is required")
 	}
 
 	if purpose != valueobjects.OTPPurposeEmailVerification &&
 		purpose != valueobjects.OTPPurposePhoneVerification {
-		return nil, errors.New("invalid onboarding OTP purpose")
+		return nil, application.NewValidation("invalid onboarding OTP purpose")
 	}
 
 	otp, err := h.otpRepo.FindLatestByRecipientAndPurpose(ctx, recipient, purpose.String())
@@ -82,25 +84,26 @@ func (h *VerifyOnboardingOTPHandler) Handle(
 	}
 
 	if otp == nil {
-		return nil, errors.New("invalid or expired OTP")
+		return nil, application.NewValidation("invalid or expired OTP")
 	}
 
 	now := h.clock().UTC()
 
 	if !otp.IsValid(now) {
-		return nil, errors.New("invalid or expired OTP")
+		return nil, application.NewValidation("invalid or expired OTP")
 	}
 
 	if otp.Channel != channel.String() {
-		return nil, errors.New("invalid or expired OTP")
+		return nil, application.NewValidation("invalid or expired OTP")
 	}
 
 	if !h.otpService.Verify(code, otp.CodeHash) {
-		return nil, errors.New("invalid or expired OTP")
+		recordFailedOTPAttempt(ctx, h.otpRepo, otp)
+		return nil, application.NewValidation("invalid or expired OTP")
 	}
 
 	if otp.UserID <= 0 {
-		return nil, errors.New("OTP is not linked to a user")
+		return nil, application.NewValidation("OTP is not linked to a user")
 	}
 
 	user, err := h.userRepository.FindByID(ctx, otp.UserID)
@@ -109,7 +112,7 @@ func (h *VerifyOnboardingOTPHandler) Handle(
 	}
 
 	if user == nil {
-		return nil, errors.New("user not found")
+		return nil, application.NewNotFound("user not found")
 	}
 
 	switch purpose {

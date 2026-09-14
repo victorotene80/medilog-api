@@ -47,8 +47,8 @@ type DashboardMedicationOverviewDTO struct {
 }
 
 type DashboardFlaggedDrugOverviewDTO struct {
-	Completed int
-	Total     int
+	Flagged int
+	Total   int
 }
 
 type DashboardFunFactDTO struct {

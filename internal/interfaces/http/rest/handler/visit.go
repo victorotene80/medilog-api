@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
@@ -37,12 +35,11 @@ func NewVisitHandler(
 //	@Produce     json
 //	@Security    BearerAuth
 //	@Param       body body request.CreateVisitRequest true "Visit payload"
-//	@Success     201 {object} response.APIResponse[struct{}]
+//	@Success     201 {object} response.APIResponse[response.EmptyData]
 //	@Router      /visits/ [post]
 func (h *VisitHandler) CreateVisit(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
@@ -69,7 +66,7 @@ func (h *VisitHandler) CreateVisit(w http.ResponseWriter, r *http.Request) {
 
 	_, err := messaging.Execute[command.CreateVisitCommand, struct{}](h.commandBus, r.Context(), cmd)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "VISIT_CREATE_FAILED", "Could not create visit", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "VISIT_CREATE_FAILED", "Could not create visit", err)
 		return
 	}
 
@@ -87,9 +84,8 @@ func (h *VisitHandler) CreateVisit(w http.ResponseWriter, r *http.Request) {
 //	@Success     200 {object} response.APIResponse[[]response.VisitResponse]
 //	@Router      /visits/ [get]
 func (h *VisitHandler) ListVisits(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
@@ -112,7 +108,7 @@ func (h *VisitHandler) ListVisits(w http.ResponseWriter, r *http.Request) {
 		h.commandBus, r.Context(), q,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "VISITS_FETCH_FAILED", "Could not fetch visits", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "VISITS_FETCH_FAILED", "Could not fetch visits", err)
 		return
 	}
 
@@ -130,15 +126,13 @@ func (h *VisitHandler) ListVisits(w http.ResponseWriter, r *http.Request) {
 //	@Success     200 {object} response.APIResponse[response.VisitResponse]
 //	@Router      /visits/{publicId} [get]
 func (h *VisitHandler) GetVisit(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
-	publicID := chi.URLParam(r, "publicId")
-	if publicID == "" {
-		response.Error(w, http.StatusBadRequest, "INVALID_ID", "Visit public ID is required", nil)
+	publicID, ok := publicIDParam(w, r, "publicId", "Visit public ID is required")
+	if !ok {
 		return
 	}
 
@@ -148,7 +142,7 @@ func (h *VisitHandler) GetVisit(w http.ResponseWriter, r *http.Request) {
 		h.commandBus, r.Context(), q,
 	)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "VISIT_FETCH_FAILED", "Could not fetch visit", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "VISIT_FETCH_FAILED", "Could not fetch visit", err)
 		return
 	}
 	if result == nil {
@@ -169,18 +163,16 @@ func (h *VisitHandler) GetVisit(w http.ResponseWriter, r *http.Request) {
 //	@Security    BearerAuth
 //	@Param       publicId path string                     true "Visit public ID"
 //	@Param       body     body request.UpdateVisitRequest true "Updated visit"
-//	@Success     200 {object} response.APIResponse[struct{}]
+//	@Success     200 {object} response.APIResponse[response.EmptyData]
 //	@Router      /visits/{publicId} [put]
 func (h *VisitHandler) UpdateVisit(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
-	publicID := chi.URLParam(r, "publicId")
-	if publicID == "" {
-		response.Error(w, http.StatusBadRequest, "INVALID_ID", "Visit public ID is required", nil)
+	publicID, ok := publicIDParam(w, r, "publicId", "Visit public ID is required")
+	if !ok {
 		return
 	}
 
@@ -208,7 +200,7 @@ func (h *VisitHandler) UpdateVisit(w http.ResponseWriter, r *http.Request) {
 
 	_, err := messaging.Execute[command.UpdateVisitCommand, struct{}](h.commandBus, r.Context(), cmd)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "VISIT_UPDATE_FAILED", "Could not update visit", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "VISIT_UPDATE_FAILED", "Could not update visit", err)
 		return
 	}
 
@@ -222,18 +214,16 @@ func (h *VisitHandler) UpdateVisit(w http.ResponseWriter, r *http.Request) {
 //	@Produce     json
 //	@Security    BearerAuth
 //	@Param       publicId path string true "Visit public ID"
-//	@Success     200 {object} response.APIResponse[struct{}]
+//	@Success     200 {object} response.APIResponse[response.EmptyData]
 //	@Router      /visits/{publicId} [delete]
 func (h *VisitHandler) DeleteVisit(w http.ResponseWriter, r *http.Request) {
-	userID, ok := UserIDFrom(r.Context())
+	userID, ok := RequireUserID(w, r)
 	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "Missing or invalid token", nil)
 		return
 	}
 
-	publicID := chi.URLParam(r, "publicId")
-	if publicID == "" {
-		response.Error(w, http.StatusBadRequest, "INVALID_ID", "Visit public ID is required", nil)
+	publicID, ok := publicIDParam(w, r, "publicId", "Visit public ID is required")
+	if !ok {
 		return
 	}
 
@@ -241,7 +231,7 @@ func (h *VisitHandler) DeleteVisit(w http.ResponseWriter, r *http.Request) {
 
 	_, err := messaging.Execute[command.DeleteVisitCommand, struct{}](h.commandBus, r.Context(), cmd)
 	if err != nil {
-		response.Error(w, httperr.StatusFrom(err), "VISIT_DELETE_FAILED", "Could not delete visit", err.Error())
+		logAndRespond(w, httperr.StatusFrom(err), "VISIT_DELETE_FAILED", "Could not delete visit", err)
 		return
 	}
 

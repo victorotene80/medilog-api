@@ -4,10 +4,10 @@ import (
 	"strconv"
 
 	"github.com/victorotene80/medilog-api/internal/application/dto"
-	"github.com/victorotene80/medilog-api/internal/domain/entities"
+	"github.com/victorotene80/medilog-api/internal/domain/readmodel"
 )
 
-func DashboardToDTO(d *entities.Dashboard) *dto.DashboardDTO {
+func DashboardToDTO(d *readmodel.Dashboard) *dto.DashboardDTO {
 	if d == nil {
 		return nil
 	}
@@ -52,8 +52,8 @@ func DashboardToDTO(d *entities.Dashboard) *dto.DashboardDTO {
 				Total:     d.HealthOverview.Medications.Total,
 			},
 			FlaggedDrugs: dto.DashboardFlaggedDrugOverviewDTO{
-				Completed: d.HealthOverview.FlaggedDrugs.Completed,
-				Total:     d.HealthOverview.FlaggedDrugs.Total,
+				Flagged: d.HealthOverview.FlaggedDrugs.Flagged,
+				Total:   d.HealthOverview.FlaggedDrugs.Total,
 			},
 		},
 		FunFact: funFact,

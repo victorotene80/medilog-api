@@ -21,6 +21,7 @@ type UserModel struct {
 	CountryCode           *string    `gorm:"column:country_code"`
 	PasswordHash          *string    `gorm:"column:password_hash"`
 	Status                string     `gorm:"column:status;not null"`
+	Role                  string     `gorm:"column:role;not null;default:user"`
 	EmailVerifiedAt       *time.Time `gorm:"column:email_verified_at"`
 	PhoneVerifiedAt       *time.Time `gorm:"column:phone_verified_at"`
 	IsOnboardingCompleted bool       `gorm:"column:is_onboarding_completed;not null"`
@@ -43,6 +44,11 @@ func UserModelToEntity(m UserModel) (*entities.User, error) {
 	status, err := valueobjects.NewUserStatus(m.Status)
 	if err != nil {
 		return nil, err
+	}
+
+	role, err := valueobjects.NewUserRole(m.Role)
+	if err != nil {
+		role = valueobjects.UserRoleUser
 	}
 
 	var sex *valueobjects.Sex
@@ -91,6 +97,7 @@ func UserModelToEntity(m UserModel) (*entities.User, error) {
 		CountryCode:           countryCode,
 		PasswordHash:          m.PasswordHash,
 		Status:                status,
+		Role:                  role,
 		EmailVerifiedAt:       m.EmailVerifiedAt,
 		PhoneVerifiedAt:       m.PhoneVerifiedAt,
 		IsOnboardingCompleted: m.IsOnboardingCompleted,
@@ -130,6 +137,11 @@ func UserEntityToModel(user entities.User) *UserModel {
 		status = "active"
 	}
 
+	role := user.Role.String()
+	if role == "" {
+		role = "user"
+	}
+
 	failedLoginAttempts := user.FailedLoginAttempts
 
 	return &UserModel{
@@ -146,6 +158,7 @@ func UserEntityToModel(user entities.User) *UserModel {
 		CountryCode:           countryCode,
 		PasswordHash:          user.PasswordHash,
 		Status:                status,
+		Role:                  role,
 		EmailVerifiedAt:       user.EmailVerifiedAt,
 		PhoneVerifiedAt:       user.PhoneVerifiedAt,
 		IsOnboardingCompleted: user.IsOnboardingCompleted,

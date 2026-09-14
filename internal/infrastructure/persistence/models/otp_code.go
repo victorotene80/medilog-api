@@ -15,6 +15,7 @@ type OTPCodeModel struct {
 	Purpose   string     `gorm:"column:purpose;not null"`
 	ExpiresAt time.Time  `gorm:"column:expires_at;not null"`
 	UsedAt    *time.Time `gorm:"column:used_at"`
+	Attempts  int        `gorm:"column:attempts;not null;default:0"`
 	CreatedAt time.Time  `gorm:"column:created_at;autoCreateTime"`
 }
 
@@ -30,6 +31,7 @@ func OTPCodeToEntity(m *OTPCodeModel) *entities.OTPCode {
 		Purpose:   m.Purpose,
 		ExpiresAt: m.ExpiresAt,
 		UsedAt:    m.UsedAt,
+		Attempts:  m.Attempts,
 		CreatedAt: m.CreatedAt,
 	}
 }
@@ -44,6 +46,7 @@ func OTPCodeToModel(e *entities.OTPCode) *OTPCodeModel {
 		Purpose:   e.Purpose,
 		ExpiresAt: e.ExpiresAt,
 		UsedAt:    e.UsedAt,
+		Attempts:  e.Attempts,
 		CreatedAt: e.CreatedAt,
 	}
 }

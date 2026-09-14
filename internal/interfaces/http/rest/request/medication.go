@@ -2,8 +2,11 @@ package request
 
 import "time"
 
+// TimeValue is a wall-clock HH:MM in the user's timezone. The format is
+// enforced here so a malformed value is a 400 at the edge rather than a parse
+// error deep in the handler, which surfaced as a 500.
 type MedicationTimeRequest struct {
-	TimeValue string `json:"time_value" validate:"required"`
+	TimeValue string `json:"time_value" validate:"required,len=5,datetime=15:04"`
 }
 
 type CreateMedicationRequest struct {
@@ -20,7 +23,7 @@ type CreateMedicationRequest struct {
 	StartDate          *time.Time              `json:"start_date"`
 	EndDate            *time.Time              `json:"end_date"`
 	Notes              *string                 `json:"notes"`
-	Times              []MedicationTimeRequest `json:"times"`
+	Times              []MedicationTimeRequest `json:"times"             validate:"omitempty,dive"`
 }
 
 type UpdateMedicationRequest struct {
@@ -35,7 +38,7 @@ type UpdateMedicationRequest struct {
 	StartDate    *time.Time              `json:"start_date"`
 	EndDate      *time.Time              `json:"end_date"`
 	Notes        *string                 `json:"notes"`
-	Times        []MedicationTimeRequest `json:"times"`
+	Times        []MedicationTimeRequest `json:"times"         validate:"omitempty,dive"`
 }
 
 type LogAdherenceRequest struct {
@@ -43,42 +46,3 @@ type LogAdherenceRequest struct {
 	Status      int       `json:"status"       validate:"required,min=1,max=3"`
 	Note        *string   `json:"note"         validate:"omitempty,max=500"`
 }
-
-/*type MedicationTimeRequest struct {
-	Label string     `json:"label" validate:"required,min=1,max=50"`
-	Value *time.Time `json:"value,omitempty"`
-}
-
-type CreateMedicationRequest struct {
-	Name         string                  `json:"name"                   validate:"required,min=1,max=300"`
-	DrugClass    string                  `json:"drug_class"             validate:"required,min=1,max=200"`
-	Dosage       string                  `json:"dosage"                 validate:"required,min=1,max=100"`
-	Frequency    string                  `json:"frequency"              validate:"required,min=1,max=100"`
-	WithFood     bool                    `json:"with_food"`
-	IsVerified   bool                    `json:"is_verified"`
-	PrescribedBy *string                 `json:"prescribed_by,omitempty"  validate:"omitempty,max=200"`
-	Facility     *string                 `json:"facility,omitempty"       validate:"omitempty,max=300"`
-	AddedVia     *string                 `json:"added_via,omitempty"      validate:"omitempty"`
-	NafdacNumber *string                 `json:"nafdac_number,omitempty"  validate:"omitempty,max=50"`
-	StartDate    *time.Time              `json:"start_date,omitempty"`
-	EndDate      *time.Time              `json:"end_date,omitempty"`
-	Notes        *string                 `json:"notes,omitempty"          validate:"omitempty,max=1000"`
-	IconURL      *string                 `json:"icon_url,omitempty"       validate:"omitempty,url"`
-	Times        []MedicationTimeRequest `json:"times,omitempty"          validate:"omitempty,dive"`
-}
-
-type UpdateMedicationRequest struct {
-	Name           string                  `json:"name"                     validate:"required,min=1,max=300"`
-	DrugClass      string                  `json:"drug_class"               validate:"required,min=1,max=200"`
-	Dosage         string                  `json:"dosage"                   validate:"required,min=1,max=100"`
-	Frequency      string                  `json:"frequency"                validate:"required,min=1,max=100"`
-	WithFood       bool                    `json:"with_food"`
-	PrescribedBy   *string                 `json:"prescribed_by,omitempty"  validate:"omitempty,max=200"`
-	Facility       *string                 `json:"facility,omitempty"       validate:"omitempty,max=300"`
-	MedicineNumber *string                 `json:"medicine_number,omitempty" validate:"omitempty,max=50"`
-	StartDate      *time.Time              `json:"start_date,omitempty"`
-	EndDate        *time.Time              `json:"end_date,omitempty"`
-	Notes          *string                 `json:"notes,omitempty"          validate:"omitempty,max=1000"`
-	IconURL        *string                 `json:"icon_url,omitempty"       validate:"omitempty,url"`
-	Times          []MedicationTimeRequest `json:"times,omitempty"          validate:"omitempty,dive"`
-}*/
