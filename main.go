@@ -35,8 +35,15 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Cloud Run injects PORT and routes traffic there; everywhere else this
+	// falls back to the 8080 that Compose and the Dockerfile publish.
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
 	server := &http.Server{
-		Addr:         ":8080",
+		Addr:         ":" + port,
 		Handler:      app.Router,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -47,7 +54,7 @@ func main() {
 	defer stop()
 
 	go func() {
-		log.Println("Server running on :8080")
+		log.Printf("Server running on :%s", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server failed: %v", err)
 		}

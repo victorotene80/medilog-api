@@ -1,15 +1,44 @@
+# Secrets and local environment
 .env
+.env.local
+*.pem
+*.key
 http-client.private.env.json
-coverage.out
-coverage.html
+api-tests/http-client.private.env.json
+
+# Build output, binaries and debugger artifacts
+medilog-api
+__debug_bin*
 *.exe
 *.test
 *.out
-.idea/
-medilog-api
+coverage.out
+coverage.html
 
-# Documents, instructions, and claude files
+# Editor / IDE / OS
+.idea/
+.vscode/
+.claude/
+.DS_Store
+**/.DS_Store
+
+# Planning and prose docs — kept out of the repo on purpose.
 *.md
 *.txt
-.claude/
-docs/
+docs/*.md
+docs/*.json
+docs/*.yaml
+
+# ...but the swaggo-generated package is NOT prose: docs/docs.go is imported by
+# internal/interfaces/http/rest/router.go, so without it the module does not
+# compile from a clean clone (and neither does the Docker build). The spec files
+# are the contract the mobile team codes against and `make swagger-check`
+# diffs them, so they are committed alongside it.
+!docs/docs.go
+!docs/swagger.json
+!docs/swagger.yaml
+
+# Keep the container and deployment config tracked despite the rules above.
+!.dockerignore
+!Dockerfile
+!docker-compose.yml

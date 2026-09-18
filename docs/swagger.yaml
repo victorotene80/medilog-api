@@ -1,0 +1,3332 @@
+basePath: /api/v1
+definitions:
+  request.AddAllergyRequest:
+    properties:
+      category:
+        maximum: 5
+        minimum: 1
+        type: integer
+      description:
+        maxLength: 500
+        type: string
+      name:
+        maxLength: 120
+        minLength: 1
+        type: string
+    required:
+    - category
+    - name
+    type: object
+  request.AddUserAllergiesRequest:
+    properties:
+      allergies:
+        items:
+          $ref: '#/definitions/request.UserAllergyItem'
+        minItems: 1
+        type: array
+    required:
+    - allergies
+    type: object
+  request.ChangePasswordRequest:
+    properties:
+      new_password:
+        minLength: 8
+        type: string
+      old_password:
+        minLength: 8
+        type: string
+    required:
+    - new_password
+    - old_password
+    type: object
+  request.CreateAIConversationRequest:
+    properties:
+      related_medication_public_id:
+        type: string
+      related_visit_public_id:
+        type: string
+      title:
+        maxLength: 200
+        type: string
+    type: object
+  request.CreateEmergencyContactRequest:
+    properties:
+      country_code:
+        maxLength: 4
+        minLength: 1
+        type: string
+      is_primary:
+        description: Address      string `json:"address"      validate:"omitempty,max=500"`
+        type: boolean
+      name:
+        maxLength: 200
+        minLength: 1
+        type: string
+      phone:
+        type: string
+      relationship:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - country_code
+    - name
+    - phone
+    - relationship
+    type: object
+  request.CreateFunFactRequest:
+    properties:
+      allergy_category:
+        maximum: 5
+        minimum: 1
+        type: integer
+      category:
+        maxLength: 100
+        type: string
+      is_active:
+        type: boolean
+      target_age_max:
+        minimum: 0
+        type: integer
+      target_age_min:
+        minimum: 0
+        type: integer
+      target_country_code:
+        maxLength: 10
+        type: string
+      text:
+        minLength: 1
+        type: string
+      title:
+        maxLength: 200
+        minLength: 1
+        type: string
+    required:
+    - text
+    - title
+    type: object
+  request.CreateMedicationRequest:
+    properties:
+      added_via:
+        maxLength: 50
+        type: string
+      dosage:
+        maxLength: 100
+        type: string
+      drug_class:
+        type: integer
+      end_date:
+        type: string
+      facility:
+        maxLength: 200
+        type: string
+      frequency:
+        maxLength: 100
+        type: string
+      name:
+        maxLength: 200
+        type: string
+      notes:
+        type: string
+      prescribed_by:
+        maxLength: 150
+        type: string
+      reg_country_code:
+        maxLength: 3
+        type: string
+      registration_number:
+        maxLength: 150
+        type: string
+      start_date:
+        type: string
+      times:
+        items:
+          $ref: '#/definitions/request.MedicationTimeRequest'
+        type: array
+      with_food:
+        type: boolean
+    required:
+    - name
+    type: object
+  request.CreateVisitRequest:
+    properties:
+      blood_pressure:
+        maxLength: 50
+        type: string
+      chief_complaint:
+        maxLength: 500
+        type: string
+      diagnosis:
+        maxLength: 500
+        minLength: 1
+        type: string
+      doctor:
+        maxLength: 150
+        type: string
+      hospital_name:
+        maxLength: 200
+        minLength: 1
+        type: string
+      meds_count:
+        minimum: 0
+        type: integer
+      notes:
+        maxLength: 1000
+        type: string
+      outcome:
+        maxLength: 100
+        minLength: 1
+        type: string
+      pulse:
+        maximum: 250
+        minimum: 30
+        type: integer
+      temperature:
+        maximum: 45
+        minimum: 30
+        type: number
+      visit_date:
+        type: string
+      weight:
+        maximum: 500
+        minimum: 1
+        type: number
+    required:
+    - visit_date
+    type: object
+  request.ForgotPasswordRequest:
+    properties:
+      recipient:
+        maxLength: 255
+        type: string
+    required:
+    - recipient
+    type: object
+  request.GoogleLoginRequest:
+    properties:
+      idToken:
+        type: string
+    required:
+    - idToken
+    type: object
+  request.LogAdherenceRequest:
+    properties:
+      note:
+        maxLength: 500
+        type: string
+      scheduled_at:
+        type: string
+      status:
+        maximum: 3
+        minimum: 1
+        type: integer
+    required:
+    - scheduled_at
+    - status
+    type: object
+  request.LoginRequest:
+    properties:
+      email:
+        maxLength: 255
+        type: string
+      password:
+        minLength: 8
+        type: string
+      phone:
+        maxLength: 255
+        type: string
+    required:
+    - password
+    type: object
+  request.MedicationTimeRequest:
+    properties:
+      time_value:
+        type: string
+    required:
+    - time_value
+    type: object
+  request.OTPRequest:
+    properties:
+      channel:
+        enum:
+        - email
+        - sms
+        - whatsapp
+        type: string
+      purpose:
+        type: string
+      recipient:
+        maxLength: 255
+        type: string
+    required:
+    - channel
+    - purpose
+    - recipient
+    type: object
+  request.RegisterRequest:
+    properties:
+      blood_type:
+        maxLength: 3
+        type: string
+      country_code:
+        maxLength: 4
+        minLength: 1
+        type: string
+      dob:
+        type: string
+      email:
+        type: string
+      first_name:
+        maxLength: 50
+        minLength: 2
+        type: string
+      last_name:
+        maxLength: 50
+        minLength: 2
+        type: string
+      password:
+        maxLength: 128
+        minLength: 8
+        type: string
+      phone:
+        maxLength: 15
+        minLength: 8
+        type: string
+      sex:
+        type: integer
+    required:
+    - blood_type
+    - country_code
+    - dob
+    - first_name
+    - last_name
+    - password
+    - sex
+    type: object
+  request.ResetPasswordRequest:
+    properties:
+      new_password:
+        maxLength: 128
+        minLength: 8
+        type: string
+      otp_code:
+        type: string
+      recipient:
+        maxLength: 255
+        type: string
+    required:
+    - new_password
+    - otp_code
+    - recipient
+    type: object
+  request.SendAIMessageRequest:
+    properties:
+      language:
+        maxLength: 50
+        type: string
+      message:
+        maxLength: 4000
+        minLength: 1
+        type: string
+    required:
+    - message
+    type: object
+  request.UpdateAIConversationRequest:
+    properties:
+      title:
+        maxLength: 200
+        type: string
+    type: object
+  request.UpdateAllergyRequest:
+    properties:
+      category:
+        maximum: 5
+        minimum: 1
+        type: integer
+      description:
+        maxLength: 500
+        type: string
+      name:
+        maxLength: 120
+        minLength: 1
+        type: string
+    required:
+    - category
+    - name
+    type: object
+  request.UpdateEmergencyContactRequest:
+    properties:
+      country_code:
+        maxLength: 4
+        minLength: 1
+        type: string
+      is_primary:
+        type: boolean
+      name:
+        maxLength: 200
+        minLength: 1
+        type: string
+      phone:
+        type: string
+      relationship:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - country_code
+    - name
+    - phone
+    - relationship
+    type: object
+  request.UpdateFunFactRequest:
+    properties:
+      allergy_category:
+        maximum: 5
+        minimum: 1
+        type: integer
+      category:
+        maxLength: 100
+        type: string
+      is_active:
+        type: boolean
+      target_age_max:
+        minimum: 0
+        type: integer
+      target_age_min:
+        minimum: 0
+        type: integer
+      target_country_code:
+        maxLength: 10
+        type: string
+      text:
+        minLength: 1
+        type: string
+      title:
+        maxLength: 200
+        minLength: 1
+        type: string
+    required:
+    - text
+    - title
+    type: object
+  request.UpdateMedicationRequest:
+    properties:
+      added_via:
+        maxLength: 50
+        type: string
+      dosage:
+        maxLength: 100
+        type: string
+      drug_class:
+        type: integer
+      end_date:
+        type: string
+      facility:
+        maxLength: 200
+        type: string
+      frequency:
+        maxLength: 100
+        type: string
+      name:
+        maxLength: 200
+        type: string
+      notes:
+        type: string
+      prescribed_by:
+        maxLength: 150
+        type: string
+      start_date:
+        type: string
+      times:
+        items:
+          $ref: '#/definitions/request.MedicationTimeRequest'
+        type: array
+      with_food:
+        type: boolean
+    required:
+    - name
+    type: object
+  request.UpdateNotificationPreferencesRequest:
+    properties:
+      ai_health_tips_enabled:
+        type: boolean
+      app_updates_enabled:
+        type: boolean
+      appointment_reminders_enabled:
+        type: boolean
+      email_enabled:
+        type: boolean
+      medication_reminders_enabled:
+        type: boolean
+      push_enabled:
+        type: boolean
+      refill_reminders_enabled:
+        type: boolean
+      sms_enabled:
+        type: boolean
+      support_updates_enabled:
+        type: boolean
+      timezone:
+        description: |-
+          Timezone is an IANA name such as "Africa/Lagos". The reminder scheduler
+          resolves it on every tick, so it is validated on write.
+        maxLength: 64
+        minLength: 1
+        type: string
+      whatsapp_enabled:
+        type: boolean
+    type: object
+  request.UpdateUserAllergyRequest:
+    properties:
+      category:
+        description: 'Category: 1=Food 2=Drug 3=Environmental 4=Contact 5=Other'
+        maximum: 5
+        minimum: 1
+        type: integer
+      description:
+        maxLength: 500
+        type: string
+      name:
+        maxLength: 120
+        minLength: 1
+        type: string
+      severity:
+        description: 'Severity: 1=Mild 2=Moderate 3=Severe 4=Life-threatening 5=Unknown'
+        maximum: 5
+        minimum: 1
+        type: integer
+    required:
+    - category
+    - name
+    type: object
+  request.UpdateUserRequest:
+    properties:
+      avatar_url:
+        maxLength: 2048
+        type: string
+      blood_type:
+        enum:
+        - A+
+        - A-
+        - B+
+        - B-
+        - O+
+        - O-
+        - AB+
+        - AB-
+        type: string
+      country_code:
+        type: string
+      dob:
+        type: string
+      first_name:
+        maxLength: 100
+        minLength: 1
+        type: string
+      height:
+        maximum: 300
+        type: number
+      last_name:
+        maxLength: 100
+        minLength: 1
+        type: string
+      sex:
+        description: 'Sex: 1=male 2=female 3=other'
+        maximum: 3
+        minimum: 1
+        type: integer
+      temperature_unit:
+        enum:
+        - celsius
+        - fahrenheit
+        type: string
+      weight:
+        maximum: 700
+        type: number
+      weight_unit:
+        enum:
+        - kg
+        - lb
+        type: string
+    type: object
+  request.UpdateVisitRequest:
+    properties:
+      blood_pressure:
+        maxLength: 50
+        type: string
+      chief_complaint:
+        maxLength: 500
+        type: string
+      diagnosis:
+        maxLength: 500
+        minLength: 1
+        type: string
+      doctor:
+        maxLength: 150
+        type: string
+      hospital_name:
+        maxLength: 200
+        minLength: 1
+        type: string
+      meds_count:
+        minimum: 0
+        type: integer
+      notes:
+        maxLength: 1000
+        type: string
+      outcome:
+        maxLength: 100
+        minLength: 1
+        type: string
+      pulse:
+        maximum: 250
+        minimum: 30
+        type: integer
+      temperature:
+        maximum: 45
+        minimum: 30
+        type: number
+      visit_date:
+        type: string
+      weight:
+        maximum: 500
+        minimum: 1
+        type: number
+    required:
+    - visit_date
+    type: object
+  request.UserAllergyItem:
+    properties:
+      allergy_id:
+        minimum: 1
+        type: integer
+      category:
+        description: 'Category: 1=Food 2=Drug 3=Environmental 4=Contact 5=Other'
+        maximum: 5
+        minimum: 1
+        type: integer
+      description:
+        maxLength: 500
+        type: string
+      name:
+        maxLength: 120
+        minLength: 1
+        type: string
+      severity:
+        description: 'Severity: 1=Mild 2=Moderate 3=Severe 4=Life-threatening 5=Unknown'
+        maximum: 5
+        minimum: 1
+        type: integer
+    required:
+    - category
+    - name
+    type: object
+  request.VerifyDrugScanRequest:
+    properties:
+      country_code:
+        maxLength: 10
+        type: string
+      drug_name:
+        maxLength: 200
+        type: string
+      expiry_date:
+        type: string
+      registration_number:
+        maxLength: 150
+        type: string
+    required:
+    - country_code
+    type: object
+  request.VerifyOTPRequest:
+    properties:
+      channel:
+        enum:
+        - email
+        - sms
+        - whatsapp
+        type: string
+      code:
+        maxLength: 8
+        minLength: 4
+        type: string
+      purpose:
+        type: string
+      recipient:
+        maxLength: 255
+        type: string
+    required:
+    - channel
+    - code
+    - purpose
+    - recipient
+    type: object
+  request.VerifyOnboardingOTPRequest:
+    properties:
+      channel:
+        enum:
+        - email
+        - sms
+        - whatsapp
+        type: string
+      code:
+        type: string
+      purpose:
+        type: string
+      recipient:
+        maxLength: 255
+        type: string
+    required:
+    - channel
+    - code
+    - purpose
+    - recipient
+    type: object
+  response.AIConversationResponse:
+    properties:
+      created_at:
+        type: string
+      last_message_at:
+        type: string
+      messages:
+        items:
+          $ref: '#/definitions/response.AIMessageResponse'
+        type: array
+      public_id:
+        type: string
+      status:
+        type: string
+      summary:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  response.AIMessageResponse:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      meta:
+        additionalProperties: {}
+        type: object
+      role:
+        type: string
+    type: object
+  response.AIQuotaResponse:
+    properties:
+      is_pro:
+        type: boolean
+      remaining:
+        type: integer
+      resets_at:
+        type: string
+      total:
+        type: integer
+      used:
+        type: integer
+    type: object
+  response.APIResponse-array_response_AIConversationResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/response.AIConversationResponse'
+        type: array
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-array_response_AllergyResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/response.AllergyResponse'
+        type: array
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-array_response_CountryResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/response.CountryResponse'
+        type: array
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-array_response_DrugScanResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/response.DrugScanResponse'
+        type: array
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-array_response_FunFactResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/response.FunFactResponse'
+        type: array
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-array_response_MedicationResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/response.MedicationResponse'
+        type: array
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-array_response_UserAllergyResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/response.UserAllergyResponse'
+        type: array
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-array_response_VisitResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/response.VisitResponse'
+        type: array
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_AIConversationResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.AIConversationResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_AIQuotaResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.AIQuotaResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_CreateUserResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.CreateUserResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_DashboardResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.DashboardResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_DrugScanResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.DrugScanResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_EmergencyContactResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.EmergencyContactResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_EmptyData:
+    properties:
+      data:
+        $ref: '#/definitions/response.EmptyData'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_FunFactResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.FunFactResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_GetUserResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.GetUserResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_GoogleAuthResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.GoogleAuthResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_ListEmergencyContactsResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.ListEmergencyContactsResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_ListNotificationsResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.ListNotificationsResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_LoginResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.LoginResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_MedicationResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.MedicationResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_NotificationPreferencesResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.NotificationPreferencesResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_NotificationResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.NotificationResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_RequestOTPResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.RequestOTPResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_SendAIMessageResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.SendAIMessageResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_UserAllergyResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.UserAllergyResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_VerifyOTPResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.VerifyOTPResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_VerifyOnboardingOTPResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.VerifyOnboardingOTPResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.APIResponse-response_VisitResponse:
+    properties:
+      data:
+        $ref: '#/definitions/response.VisitResponse'
+      errors: {}
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: boolean
+    type: object
+  response.AllergyResponse:
+    properties:
+      category:
+        type: integer
+      category_label:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  response.AuthTokensResponse:
+    properties:
+      access_token:
+        type: string
+      access_token_expires_at:
+        type: string
+      refresh_token:
+        type: string
+      refresh_token_expires_at:
+        type: string
+    type: object
+  response.CountryResponse:
+    properties:
+      code:
+        type: string
+      dial_code:
+        type: string
+      flag:
+        type: string
+      name:
+        type: string
+    type: object
+  response.CreateUserResponse:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      onboarding_completed:
+        type: boolean
+      phone:
+        type: string
+      requires_onboarding:
+        type: boolean
+      user_id:
+        type: string
+    type: object
+  response.DashboardFlaggedDrugOverviewResponse:
+    properties:
+      flagged:
+        type: integer
+      total:
+        type: integer
+    type: object
+  response.DashboardFunFactResponse:
+    properties:
+      text:
+        type: string
+    type: object
+  response.DashboardHealthOverviewResponse:
+    properties:
+      flagged_drugs:
+        $ref: '#/definitions/response.DashboardFlaggedDrugOverviewResponse'
+      medications:
+        $ref: '#/definitions/response.DashboardMedicationOverviewResponse'
+      visits:
+        $ref: '#/definitions/response.DashboardVisitOverviewResponse'
+    type: object
+  response.DashboardMedicationOverviewResponse:
+    properties:
+      completed:
+        type: integer
+      total:
+        type: integer
+    type: object
+  response.DashboardMedicationResponse:
+    properties:
+      adherence_count:
+        type: integer
+      completed_date:
+        type: string
+      dosage:
+        type: string
+      frequency:
+        type: string
+      id:
+        type: string
+      is_completed:
+        type: boolean
+      is_verified:
+        type: boolean
+      name:
+        type: string
+      times:
+        items:
+          type: string
+        type: array
+      total_doses:
+        type: integer
+    type: object
+  response.DashboardResponse:
+    properties:
+      fun_fact:
+        $ref: '#/definitions/response.DashboardFunFactResponse'
+      health_overview:
+        $ref: '#/definitions/response.DashboardHealthOverviewResponse'
+      medications:
+        items:
+          $ref: '#/definitions/response.DashboardMedicationResponse'
+        type: array
+      user:
+        $ref: '#/definitions/response.DashboardUserResponse'
+    type: object
+  response.DashboardUserResponse:
+    properties:
+      avatar_url:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: string
+      last_name:
+        type: string
+    type: object
+  response.DashboardVisitOverviewResponse:
+    properties:
+      monthly:
+        items:
+          type: integer
+        type: array
+      total:
+        type: integer
+      upcoming:
+        type: integer
+    type: object
+  response.DrugScanResponse:
+    properties:
+      confidence_score:
+        type: number
+      created_at:
+        type: string
+      drug_name:
+        type: string
+      expiry_date:
+        type: string
+      explanation:
+        type: string
+      is_verified:
+        type: boolean
+      lot_number_valid:
+        type: boolean
+      public_id:
+        type: string
+      registered_medicine:
+        $ref: '#/definitions/response.RegisteredMedicineResponse'
+      registration_number:
+        type: string
+      verification_status:
+        type: string
+    type: object
+  response.EmergencyContactResponse:
+    properties:
+      country_code:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      is_primary:
+        type: boolean
+      name:
+        type: string
+      phone:
+        type: string
+      relationship:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  response.EmptyData:
+    type: object
+  response.FunFactResponse:
+    properties:
+      allergy_category:
+        type: integer
+      category:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      target_age_max:
+        type: integer
+      target_age_min:
+        type: integer
+      target_country_code:
+        type: string
+      text:
+        type: string
+      title:
+        type: string
+    type: object
+  response.GetUserEmergencyContactDTO:
+    properties:
+      id:
+        type: string
+      is_primary:
+        type: boolean
+      name:
+        type: string
+      phone:
+        type: string
+      relationship:
+        type: string
+    type: object
+  response.GetUserResponse:
+    properties:
+      avatar_url:
+        type: string
+      blood_type:
+        type: string
+      country:
+        type: string
+      country_code:
+        type: string
+      created_at:
+        type: string
+      dob:
+        type: string
+      email:
+        type: string
+      emergency_contact:
+        $ref: '#/definitions/response.GetUserEmergencyContactDTO'
+      first_name:
+        type: string
+      height:
+        type: number
+      id:
+        type: string
+      last_login_at:
+        type: string
+      last_name:
+        type: string
+      onboarding_completed:
+        type: boolean
+      phone:
+        type: string
+      sex:
+        type: string
+      status:
+        type: string
+      temperature_unit:
+        type: string
+      updated_at:
+        type: string
+      weight:
+        type: number
+      weight_unit:
+        type: string
+    type: object
+  response.GoogleAuthResponse:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      google_id:
+        type: string
+      last_login:
+        type: string
+      last_name:
+        type: string
+      onboarding_completed:
+        type: boolean
+      picture_url:
+        type: string
+      requires_onboarding:
+        type: boolean
+      status:
+        type: string
+      tokens:
+        $ref: '#/definitions/response.AuthTokensResponse'
+      user_id:
+        type: string
+    type: object
+  response.ListEmergencyContactsResponse:
+    properties:
+      contacts:
+        items:
+          $ref: '#/definitions/response.EmergencyContactResponse'
+        type: array
+    type: object
+  response.ListNotificationsResponse:
+    properties:
+      notifications:
+        items:
+          $ref: '#/definitions/response.NotificationResponse'
+        type: array
+    type: object
+  response.LoginResponse:
+    properties:
+      challenge_id:
+        type: string
+      last_login:
+        type: string
+      onboarding_completed:
+        type: boolean
+      requires_onboarding:
+        type: boolean
+      status:
+        type: string
+      tokens:
+        $ref: '#/definitions/response.AuthTokensResponse'
+      user_id:
+        type: string
+    type: object
+  response.MedicationResponse:
+    properties:
+      added_via:
+        type: string
+      adherence_rate:
+        type: number
+      completed_date:
+        type: string
+      created_at:
+        type: string
+      dosage:
+        type: string
+      drug_class:
+        type: integer
+      end_date:
+        type: string
+      facility:
+        type: string
+      frequency:
+        type: string
+      is_completed:
+        type: boolean
+      is_verified:
+        type: boolean
+      name:
+        type: string
+      notes:
+        type: string
+      prescribed_by:
+        type: string
+      public_id:
+        type: string
+      reg_country_code:
+        type: string
+      registration_number:
+        type: string
+      start_date:
+        type: string
+      times:
+        items:
+          $ref: '#/definitions/response.MedicationTimeResponse'
+        type: array
+      updated_at:
+        type: string
+      with_food:
+        type: boolean
+    type: object
+  response.MedicationTimeResponse:
+    properties:
+      id:
+        type: integer
+      time_value:
+        type: string
+    type: object
+  response.NotificationPreferencesResponse:
+    properties:
+      ai_health_tips_enabled:
+        type: boolean
+      app_updates_enabled:
+        type: boolean
+      appointment_reminders_enabled:
+        type: boolean
+      email_enabled:
+        type: boolean
+      medication_reminders_enabled:
+        type: boolean
+      push_enabled:
+        type: boolean
+      refill_reminders_enabled:
+        type: boolean
+      sms_enabled:
+        type: boolean
+      support_updates_enabled:
+        type: boolean
+      timezone:
+        type: string
+      whatsapp_enabled:
+        type: boolean
+    type: object
+  response.NotificationResponse:
+    properties:
+      body:
+        type: string
+      channel:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      image_url:
+        type: string
+      metadata:
+        additionalProperties: {}
+        type: object
+      read_at:
+        type: string
+      scheduled_at:
+        type: string
+      sent_at:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+      user_id:
+        type: string
+    type: object
+  response.RegisteredMedicineResponse:
+    properties:
+      applicant_name:
+        type: string
+      category_name:
+        type: string
+      country_code:
+        type: string
+      drug_name:
+        type: string
+      expiry_date:
+        type: string
+      form_name:
+        type: string
+      id:
+        type: integer
+      ingredient_name:
+        type: string
+      manufacturer:
+        type: string
+      registered_date:
+        type: string
+      registration_number:
+        type: string
+      route_name:
+        type: string
+      status:
+        type: boolean
+      strength:
+        type: string
+    type: object
+  response.RequestOTPResponse:
+    properties:
+      channel:
+        type: string
+      expires_at:
+        type: string
+      message:
+        type: string
+      purpose:
+        type: string
+      recipient:
+        type: string
+    type: object
+  response.SendAIMessageResponse:
+    properties:
+      context_meta:
+        additionalProperties: {}
+        type: object
+      conversation:
+        $ref: '#/definitions/response.AIConversationResponse'
+      message:
+        $ref: '#/definitions/response.AIMessageResponse'
+      model:
+        type: string
+      output_tokens:
+        type: integer
+      prompt_tokens:
+        type: integer
+      quota:
+        allOf:
+        - $ref: '#/definitions/response.AIQuotaResponse'
+        description: |-
+          Quota is the allowance after this message was counted, so the client can
+          update its counter without a follow-up GET /ai/quota.
+      reply:
+        $ref: '#/definitions/response.AIMessageResponse'
+    type: object
+  response.UserAllergyResponse:
+    properties:
+      allergy_id:
+        type: integer
+      category:
+        type: integer
+      category_label:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      is_custom:
+        type: boolean
+      name:
+        type: string
+      severity:
+        type: integer
+      severity_label:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  response.VerifyOTPResponse:
+    properties:
+      channel:
+        type: string
+      message:
+        type: string
+      purpose:
+        type: string
+      recipient:
+        type: string
+      user_id:
+        type: string
+      verified:
+        type: boolean
+    type: object
+  response.VerifyOnboardingOTPResponse:
+    properties:
+      channel:
+        type: string
+      message:
+        type: string
+      onboarding_completed:
+        type: boolean
+      onboarding_step:
+        type: string
+      purpose:
+        type: string
+      recipient:
+        type: string
+      requires_onboarding:
+        type: boolean
+      tokens:
+        $ref: '#/definitions/response.AuthTokensResponse'
+      user_id:
+        type: string
+      verified:
+        type: boolean
+    type: object
+  response.VisitResponse:
+    properties:
+      blood_pressure:
+        type: string
+      chief_complaint:
+        type: string
+      created_at:
+        type: string
+      diagnosis:
+        type: string
+      doctor:
+        type: string
+      hospital_name:
+        type: string
+      meds_count:
+        type: integer
+      notes:
+        type: string
+      outcome:
+        type: string
+      public_id:
+        type: string
+      pulse:
+        type: integer
+      temperature:
+        type: number
+      updated_at:
+        type: string
+      visit_date:
+        type: string
+      weight:
+        type: number
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: HTTP API for MediLog authentication, health records, medication tracking,
+    AI conversations, drug verification, and reference data.
+  title: MediLog API
+  version: "1.0"
+paths:
+  /ai/conversations/:
+    get:
+      description: Lists AI conversations for the authenticated user.
+      parameters:
+      - description: Return only active conversations
+        in: query
+        name: active_only
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-array_response_AIConversationResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: List AI conversations
+      tags:
+      - AI Conversations
+    post:
+      consumes:
+      - application/json
+      description: Creates an AI conversation for the authenticated user.
+      parameters:
+      - description: AI conversation payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.CreateAIConversationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_AIConversationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Create AI conversation
+      tags:
+      - AI Conversations
+  /ai/conversations/{publicId}:
+    get:
+      description: Gets one AI conversation by public ID.
+      parameters:
+      - description: AI conversation public ID
+        in: path
+        name: publicId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_AIConversationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Get AI conversation
+      tags:
+      - AI Conversations
+    patch:
+      description: Updates an AI conversation by public ID (e.g. rename title).
+      parameters:
+      - description: AI conversation public ID
+        in: path
+        name: publicId
+        required: true
+        type: string
+      - description: Update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.UpdateAIConversationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_AIConversationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Update AI conversation
+      tags:
+      - AI Conversations
+  /ai/conversations/{publicId}/archive:
+    patch:
+      description: Archives one AI conversation by public ID.
+      parameters:
+      - description: AI conversation public ID
+        in: path
+        name: publicId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Archive AI conversation
+      tags:
+      - AI Conversations
+  /ai/conversations/{publicId}/messages:
+    post:
+      consumes:
+      - application/json
+      description: Sends a user message and returns the saved message plus AI reply.
+      parameters:
+      - description: AI conversation public ID
+        in: path
+        name: publicId
+        required: true
+        type: string
+      - description: AI message payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.SendAIMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_SendAIMessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Send AI message
+      tags:
+      - AI Conversations
+  /ai/quota:
+    get:
+      description: Returns how many AI questions the user has used and has left,
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_AIQuotaResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Get the caller's AI question quota
+      tags:
+      - AI Conversations
+  /auth/change-password:
+    post:
+      consumes:
+      - application/json
+      description: Changes the authenticated user's password.
+      parameters:
+      - description: Change password payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Change password
+      tags:
+      - Auth
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Sends a password reset OTP when the account can be resolved.
+      parameters:
+      - description: Forgot password payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      summary: Request password reset OTP
+      tags:
+      - Auth
+  /auth/google:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user with a Google ID token.
+      parameters:
+      - description: Google login payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.GoogleLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_GoogleAuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      summary: Authenticate with Google
+      tags:
+      - Auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Logs in with email or phone plus password.
+      parameters:
+      - description: Login payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      summary: Log in
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      description: Revokes the current authenticated session.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Log out
+      tags:
+      - Auth
+  /auth/otp/request:
+    post:
+      consumes:
+      - application/json
+      description: Sends a one-time password to the given recipient via the chosen
+        channel.
+      parameters:
+      - description: OTP request payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.OTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_RequestOTPResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      summary: Request an OTP
+      tags:
+      - Auth / OTP
+  /auth/otp/verify:
+    post:
+      consumes:
+      - application/json
+      description: Validates the submitted OTP code and marks the channel (email/phone)
+        as verified.
+      parameters:
+      - description: OTP verify payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.VerifyOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_VerifyOTPResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      summary: Verify an OTP
+      tags:
+      - Auth / OTP
+  /auth/otp/verify-onboarding:
+    post:
+      consumes:
+      - application/json
+      description: Verifies the OTP submitted during registration/onboarding.
+      parameters:
+      - description: Onboarding OTP verify payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.VerifyOnboardingOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_VerifyOnboardingOTPResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      summary: Verify onboarding OTP
+      tags:
+      - Auth / OTP
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user account.
+      parameters:
+      - description: Registration payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_CreateUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      summary: Register a user
+      tags:
+      - Auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Resets a password with a valid password reset OTP.
+      parameters:
+      - description: Reset password payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      summary: Reset password
+      tags:
+      - Auth
+  /dashboard:
+    get:
+      description: Returns dashboard data for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_DashboardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Get dashboard
+      tags:
+      - Dashboard
+  /drugs/scans:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-array_response_DrugScanResponse'
+      security:
+      - BearerAuth: []
+      summary: List this user's drug scan history
+      tags:
+      - Drugs
+  /drugs/scans/{publicId}:
+    get:
+      parameters:
+      - description: Scan public ID
+        in: path
+        name: publicId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_DrugScanResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a single drug scan by public ID
+      tags:
+      - Drugs
+  /drugs/verify:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Drug scan payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.VerifyDrugScanRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_DrugScanResponse'
+      security:
+      - BearerAuth: []
+      summary: Verify a drug against the national registry
+      tags:
+      - Drugs
+  /emergency-contacts/:
+    get:
+      description: Returns every emergency contact belonging to the authenticated
+        user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_ListEmergencyContactsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: List emergency contacts
+      tags:
+      - Emergency Contacts
+    post:
+      consumes:
+      - application/json
+      description: Creates an emergency contact linked to the authenticated user.
+      parameters:
+      - description: Contact payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.CreateEmergencyContactRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Add an emergency contact
+      tags:
+      - Emergency Contacts
+  /emergency-contacts/{publicId}:
+    delete:
+      description: Removes the contact identified by its public id. The user's only
+      parameters:
+      - description: Emergency contact public id
+        in: path
+        name: publicId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Delete an emergency contact
+      tags:
+      - Emergency Contacts
+    put:
+      consumes:
+      - application/json
+      description: Fully replaces the emergency contact identified by its public id.
+      parameters:
+      - description: Emergency contact public id
+        in: path
+        name: publicId
+        required: true
+        type: string
+      - description: Contact payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.UpdateEmergencyContactRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmergencyContactResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Update an emergency contact
+      tags:
+      - Emergency Contacts
+  /health/allergies/:
+    get:
+      description: Returns all allergies recorded for the authenticated user.
+      parameters:
+      - description: Allergy category (1-5)
+        in: query
+        name: category
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-array_response_UserAllergyResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: List authenticated user's allergies
+      tags:
+      - Health / Allergies
+    post:
+      consumes:
+      - application/json
+      description: Records one or more allergies against the authenticated user.
+      parameters:
+      - description: Allergies payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.AddUserAllergiesRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Add allergies for the authenticated user
+      tags:
+      - Health / Allergies
+  /health/allergies/{publicId}:
+    delete:
+      description: Removes a specific allergy from the authenticated user's record
+        by public ID.
+      parameters:
+      - description: Allergy public ID (UUID)
+        in: path
+        name: publicId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Delete an authenticated user's allergy
+      tags:
+      - Health / Allergies
+    put:
+      consumes:
+      - application/json
+      description: Fully replaces the allergy record identified by its public id.
+      parameters:
+      - description: User allergy public id
+        in: path
+        name: publicId
+        required: true
+        type: string
+      - description: Allergy payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.UpdateUserAllergyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_UserAllergyResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Update one of the authenticated user's allergies
+      tags:
+      - Health / Allergies
+  /medications/:
+    get:
+      parameters:
+      - description: Return only active medications
+        in: query
+        name: active_only
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-array_response_MedicationResponse'
+      security:
+      - BearerAuth: []
+      summary: List medications
+      tags:
+      - Medications
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Medication payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.CreateMedicationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Add a medication
+      tags:
+      - Medications
+  /medications/{publicId}:
+    delete:
+      parameters:
+      - description: Medication public ID
+        in: path
+        name: publicId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Delete a medication
+      tags:
+      - Medications
+    get:
+      parameters:
+      - description: Medication public ID
+        in: path
+        name: publicId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_MedicationResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a medication
+      tags:
+      - Medications
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Medication public ID
+        in: path
+        name: publicId
+        required: true
+        type: string
+      - description: Updated medication
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.UpdateMedicationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Update a medication
+      tags:
+      - Medications
+  /medications/{publicId}/adherence:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Medication public ID
+        in: path
+        name: publicId
+        required: true
+        type: string
+      - description: Adherence log
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.LogAdherenceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Log a medication dose
+      tags:
+      - Medications
+  /medications/{publicId}/complete:
+    patch:
+      parameters:
+      - description: Medication public ID
+        in: path
+        name: publicId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Mark a medication as completed
+      tags:
+      - Medications
+  /notifications:
+    get:
+      description: Returns the user's in-app notification inbox, newest first.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_ListNotificationsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: List the authenticated user's notifications
+      tags:
+      - Notifications
+  /notifications/{notificationId}:
+    get:
+      description: Fetches one notification by its public UUID — the same value the
+      parameters:
+      - description: Notification public id (UUID)
+        in: path
+        name: notificationId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_NotificationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Get a single notification
+      tags:
+      - Notifications
+  /notifications/{notificationId}/read:
+    patch:
+      description: Marks one notification read, addressed by its public UUID.
+      parameters:
+      - description: Notification public id (UUID)
+        in: path
+        name: notificationId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_NotificationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Mark a notification as read
+      tags:
+      - Notifications
+  /notifications/read-all:
+    patch:
+      description: Clears the unread badge by marking all of the user's unread
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Mark every notification as read
+      tags:
+      - Notifications
+  /reference/allergies/:
+    get:
+      description: Returns the full reference list. Optionally filter by ?category=1..5
+      parameters:
+      - description: Allergy category (1-5)
+        in: query
+        name: category
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-array_response_AllergyResponse'
+      summary: List master allergies
+      tags:
+      - Reference
+    post:
+      consumes:
+      - application/json
+      description: Adds a new entry to the reference allergy list (admin use).
+      parameters:
+      - description: Allergy payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.AddAllergyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      summary: Add a master allergy
+      tags:
+      - Reference
+  /reference/allergies/{id}:
+    delete:
+      description: Removes a reference allergy entry by ID.
+      parameters:
+      - description: Allergy ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      summary: Delete a master allergy
+      tags:
+      - Reference
+    put:
+      consumes:
+      - application/json
+      description: Updates name, category, and description of an existing reference
+        allergy.
+      parameters:
+      - description: Allergy ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated allergy payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.UpdateAllergyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      summary: Update a master allergy
+      tags:
+      - Reference
+  /reference/countries:
+    get:
+      description: Returns a list of countries with ISO codes, dial codes and flag
+        URLs.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-array_response_CountryResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      summary: List all supported countries
+      tags:
+      - Reference Data
+  /reference/fun-facts/:
+    get:
+      description: Returns the published (active) fun facts.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-array_response_FunFactResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      summary: List fun facts
+      tags:
+      - Reference
+    post:
+      consumes:
+      - application/json
+      description: Creates a fun fact reference record.
+      parameters:
+      - description: Fun fact payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.CreateFunFactRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Create fun fact
+      tags:
+      - Reference
+  /reference/fun-facts/{id}:
+    delete:
+      description: Deletes a fun fact reference record by numeric ID.
+      parameters:
+      - description: Fun fact ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Delete fun fact
+      tags:
+      - Reference
+    get:
+      description: Returns one fun fact by numeric ID.
+      parameters:
+      - description: Fun fact ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_FunFactResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      summary: Get fun fact
+      tags:
+      - Reference
+    put:
+      consumes:
+      - application/json
+      description: Updates a fun fact reference record by numeric ID.
+      parameters:
+      - description: Fun fact ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated fun fact payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.UpdateFunFactRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Update fun fact
+      tags:
+      - Reference
+  /users/me:
+    get:
+      description: Returns the profile of the currently authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_GetUserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Get authenticated user's profile
+      tags:
+      - Users
+    patch:
+      consumes:
+      - application/json
+      description: Partial update — omitted fields are left unchanged. Returns the
+      parameters:
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_GetUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Update the authenticated user's profile
+      tags:
+      - Users
+  /users/me/notification-preferences:
+    get:
+      description: Returns the caller's delivery preferences and reminder timezone.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_NotificationPreferencesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Get notification preferences
+      tags:
+      - Users
+    patch:
+      consumes:
+      - application/json
+      description: Partial update — omitted toggles are left unchanged. The
+      parameters:
+      - description: Preferences to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.UpdateNotificationPreferencesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_NotificationPreferencesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Update notification preferences
+      tags:
+      - Users
+  /visits/:
+    get:
+      parameters:
+      - description: Start datetime or date
+        in: query
+        name: from
+        type: string
+      - description: End datetime or date
+        in: query
+        name: to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-array_response_VisitResponse'
+      security:
+      - BearerAuth: []
+      summary: List visits
+      tags:
+      - Visits
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Visit payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.CreateVisitRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Add a visit
+      tags:
+      - Visits
+  /visits/{publicId}:
+    delete:
+      parameters:
+      - description: Visit public ID
+        in: path
+        name: publicId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Delete a visit
+      tags:
+      - Visits
+    get:
+      parameters:
+      - description: Visit public ID
+        in: path
+        name: publicId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_VisitResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a visit
+      tags:
+      - Visits
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Visit public ID
+        in: path
+        name: publicId
+        required: true
+        type: string
+      - description: Updated visit
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/request.UpdateVisitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.APIResponse-response_EmptyData'
+      security:
+      - BearerAuth: []
+      summary: Update a visit
+      tags:
+      - Visits
+schemes:
+- http
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

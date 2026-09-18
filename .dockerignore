@@ -1,0 +1,45 @@
+# Build context for the API image. Everything the compiled binary does not need
+# stays out: a smaller context uploads faster to Cloud Build and keeps secrets
+# and local junk out of the builder layers.
+
+# VCS and tooling
+.git
+.gitignore
+.github
+.idea
+.vscode
+.claude
+.DS_Store
+**/.DS_Store
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+http-client.private.env.json
+
+# Local build output / debugger binaries
+medilog-api
+__debug_bin*
+*.exe
+*.test
+*.out
+coverage.out
+coverage.html
+
+# Local-only stacks and manual test scripts
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile
+.dockerignore
+observability/
+api-tests/
+test/
+
+# Prose and planning docs. Note docs/*.go is deliberately NOT excluded:
+# docs/docs.go is the swaggo-generated package imported by the router, so it is
+# a compile-time dependency and must stay in the build context.
+*.md
+*.txt
+docs/*.json
+docs/*.yaml
