@@ -1,5 +1,5 @@
 .PHONY: test test-unit test-integration test-coverage test-build lint vet migrate-test \
-        docker-build gcp-deploy gcp-logs
+        docker-build oracle-deploy oracle-logs oracle-ssh
 
 MIGRATE_TEST_CONTAINER ?= medilog-migrate-test
 MIGRATE_TEST_PORT      ?= 55432
@@ -114,30 +114,35 @@ help:
 	@echo "  make lint               Run golangci-lint"
 	@echo "  make vet                Run go vet"
 	@echo "  make clean              Remove coverage files"
+	@echo "  make docker-build       Build the image locally (sanity check)"
+	@echo "  make oracle-deploy      SSH to the VM and deploy (needs ORACLE_HOST)"
+	@echo "  make oracle-logs        Tail the API container's logs on the VM"
+	@echo "  make oracle-ssh         Open a shell on the VM"
 
 # ---------------------------------------------------------------------------
-# Container / Google Cloud
+# Container / Oracle Cloud (self-hosted, Always Free Ampere A1 VM)
 # ---------------------------------------------------------------------------
+# The VM builds its own image natively (arm64), so there's no cross-compile
+# step and no registry — set ORACLE_HOST once, e.g. in your shell profile:
+#   export ORACLE_HOST=ubuntu@203.0.113.10
 
-GCP_REGION   ?= us-central1
-GCP_SERVICE  ?= medilog-api
-TAG          ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo latest)
+TAG ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo latest)
 
-# Cloud Run is amd64-only, so --platform is not optional on an Apple Silicon
-# machine: without it you get an arm64 image that Cloud Run refuses to start.
+# Local sanity-check build only (matches your Mac's arch, not the VM's).
 docker-build:
-	@echo "=== Building linux/amd64 image ==="
-	docker build --platform linux/amd64 -t $(GCP_SERVICE):$(TAG) .
+	@echo "=== Building local-arch image (sanity check only; the VM builds its own) ==="
+	docker build -t medilog-api:$(TAG) .
 
-# One pipeline: build -> push -> `migrate up` as a Cloud Run job -> deploy.
-# _CLOUDSQL_INSTANCE and _REDIS_HOST have no sensible defaults, so they are
-# required here rather than silently wrong.
-gcp-deploy:
-	@test -n "$(CLOUDSQL_INSTANCE)" || { echo "ERROR: set CLOUDSQL_INSTANCE=PROJECT:REGION:INSTANCE"; exit 1; }
-	@test -n "$(REDIS_HOST)" || { echo "ERROR: set REDIS_HOST=<memorystore private ip>"; exit 1; }
-	@echo "=== Submitting build $(TAG) to Cloud Build ==="
-	gcloud builds submit --config cloudbuild.yaml \
-		--substitutions=_TAG=$(TAG),_REGION=$(GCP_REGION),_SERVICE=$(GCP_SERVICE),_CLOUDSQL_INSTANCE=$(CLOUDSQL_INSTANCE),_REDIS_HOST=$(REDIS_HOST)
+# SSHes to the VM and runs scripts/deploy.sh there: git pull, rebuild, migrate,
+# restart. See docs/deploy-oracle.md for the one-time VM setup this depends on.
+oracle-deploy:
+	@test -n "$(ORACLE_HOST)" || { echo "ERROR: set ORACLE_HOST=user@vm-ip"; exit 1; }
+	ssh $(ORACLE_HOST) "cd medilog-api && ./scripts/deploy.sh"
 
-gcp-logs:
-	gcloud run services logs tail $(GCP_SERVICE) --region $(GCP_REGION)
+oracle-logs:
+	@test -n "$(ORACLE_HOST)" || { echo "ERROR: set ORACLE_HOST=user@vm-ip"; exit 1; }
+	ssh $(ORACLE_HOST) "cd medilog-api && docker compose -f docker-compose.prod.yml logs -f --tail=100 api"
+
+oracle-ssh:
+	@test -n "$(ORACLE_HOST)" || { echo "ERROR: set ORACLE_HOST=user@vm-ip"; exit 1; }
+	ssh $(ORACLE_HOST)

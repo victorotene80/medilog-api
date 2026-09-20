@@ -104,6 +104,23 @@ func (h *SendAIMessageHandler) Handle(
 		return nil, application.NewQuotaExceeded("AI quota exhausted")
 	}
 
+	// Classify before the expensive context build and chat call, so an
+	// off-topic question only pays for a short classification call.
+	classification, err := h.ai.ClassifyTopic(ctx, dto.ClassifyTopicRequest{Message: content})
+	if err != nil {
+		return nil, err
+	}
+	if !classification.OnTopic {
+		consumed, cErr := h.profiles.ConsumeAIQuestion(ctx, cmd.UserID)
+		if cErr != nil {
+			return nil, fmt.Errorf("consume ai question: %w", cErr)
+		}
+		if !consumed {
+			return nil, application.NewQuotaExceeded("AI quota exhausted")
+		}
+		return nil, application.NewOffTopic("please ask a question related to your health, medications, or medical records")
+	}
+
 	patientContext, err := h.contextBuilder.Build(ctx, cmd.UserID)
 	if err != nil {
 		return nil, err

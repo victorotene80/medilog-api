@@ -153,8 +153,8 @@ func TestUserProfile_AIQuestionsRemaining(t *testing.T) {
 // The Go default must agree with the SQL column default and the gorm tag,
 // otherwise a user's allowance depends on which code path created their row.
 func TestDefaultAIQuestionsTotal_MatchesSchemaDefault(t *testing.T) {
-	assert.Equal(t, 10, DefaultAIQuestionsTotal)
-	assert.Equal(t, 10, NewDefaultUserProfile(1).AIQuestionsTotal)
+	assert.Equal(t, 4, DefaultAIQuestionsTotal)
+	assert.Equal(t, 4, NewDefaultUserProfile(1).AIQuestionsTotal)
 }
 
 func TestNewDefaultUserProfile_DefaultsToUTC(t *testing.T) {

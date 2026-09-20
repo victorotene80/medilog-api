@@ -25,7 +25,7 @@ func StatusFrom(err error) int {
 			return http.StatusNotFound // 404
 		case application.KindConflict:
 			return http.StatusConflict // 409
-		case application.KindValidation:
+		case application.KindValidation, application.KindOffTopic:
 			return http.StatusUnprocessableEntity // 422
 		case application.KindUnauthorized:
 			return http.StatusUnauthorized // 401

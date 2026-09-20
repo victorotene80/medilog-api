@@ -31,8 +31,9 @@ func (a *ClaudeModelAdapter) Complete(
 	}
 
 	claudeReq := MessageRequest{
-		System:   req.System,
-		Messages: msgs,
+		System:    req.System,
+		Messages:  msgs,
+		MaxTokens: req.MaxTokens,
 	}
 
 	resp, err := a.svc.Send(ctx, claudeReq)

@@ -10,6 +10,9 @@ type AIMessage struct {
 type AICompletionRequest struct {
 	System   string
 	Messages []AIMessage
+	// MaxTokens overrides the configured default completion budget when set.
+	// Zero means "use the configured default".
+	MaxTokens int
 }
 
 type AICompletionResponse struct {

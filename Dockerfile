@@ -1,7 +1,8 @@
-# Cross-compiling builder: runs natively on the build machine (fast on Apple
-# Silicon) but emits a binary for the *target* platform. Cloud Run only runs
-# linux/amd64, so `docker build --platform linux/amd64` on a Mac must not
-# produce an arm64 binary.
+# Cross-compiling builder: runs natively on the build machine but emits a
+# binary for the *target* platform. Deployed via `docker compose build` run
+# directly on the Oracle arm64 VM, so TARGETARCH is auto-populated as arm64
+# there with no flags needed; --platform still lets you cross-build for a
+# different target (e.g. testing an amd64 image on a Mac) when needed.
 FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS builder
 
 RUN apk add --no-cache git ca-certificates tzdata
@@ -35,21 +36,19 @@ COPY --from=builder /out/medilog-api ./medilog-api
 # working directory — it does NOT use the embedded FS (that is only how the
 # DB_VERIFY_SCHEMA drift check learns the expected version). So the SQL files
 # have to be in the image next to the binary, or `migrate up` finds nothing.
-# Shipping both in one image lets the Cloud Run Job and the service share it:
-# the job overrides the entrypoint with /app/migrate.
+# Shipping both in one image lets the `migrate` and `api` compose services
+# share it: the migrate service overrides the entrypoint with ./migrate.
 COPY --from=builder /out/migrate ./migrate
 COPY migrations ./migrations
 
 RUN adduser --disabled-password --gecos "" --uid 10001 appuser
 USER appuser
 
-# Cloud Run injects PORT and routes traffic to it; 8080 is its default and the
-# port Compose publishes.
+# 8080 is the port Compose publishes (127.0.0.1:8080 -> Caddy proxies to it).
 ENV PORT=8080
 EXPOSE 8080
 
-# Ignored by Cloud Run (it uses its own startup/liveness probes) but used by
-# Compose and any plain `docker run`.
+# Used by Compose's own healthcheck and any plain `docker run`.
 #
 # -O /dev/null rather than --spider: --spider issues a HEAD, and the route is
 # registered with chi's Get(), so HEAD /health answers 405 and the container

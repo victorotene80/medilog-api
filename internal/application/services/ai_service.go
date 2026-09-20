@@ -282,6 +282,37 @@ func (s *AIService) SummarizeChat(
 	}, nil
 }
 
+// ClassifyTopic decides whether a message belongs in the health/medication
+// assistant, so callers can skip the expensive context-building and chat
+// call for off-topic questions. It fails open: only an explicit OFF_TOPIC
+// reply rejects a message, so a malformed or ambiguous model reply never
+// blocks a legitimate question.
+func (s *AIService) ClassifyTopic(
+	ctx context.Context,
+	req dto.ClassifyTopicRequest,
+) (*dto.ClassifyTopicResponse, error) {
+	resp, err := s.model.Complete(ctx, appContracts.AICompletionRequest{
+		System: promptClassifyTopic,
+		Messages: []appContracts.AIMessage{
+			{Role: "user", Content: req.Message},
+		},
+		MaxTokens: 8,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("ai: classify topic: %w", err)
+	}
+
+	verdict := strings.ToUpper(strings.TrimSpace(resp.Text))
+	onTopic := !strings.Contains(verdict, "OFF_TOPIC")
+
+	return &dto.ClassifyTopicResponse{
+		OnTopic:      onTopic,
+		Model:        resp.Model,
+		PromptTokens: resp.PromptTokens,
+		OutputTokens: resp.OutputTokens,
+	}, nil
+}
+
 // stripFences removes markdown code fences the model sometimes wraps JSON in.
 func (s *AIService) stripFences(text string) string {
 	text = strings.TrimSpace(text)

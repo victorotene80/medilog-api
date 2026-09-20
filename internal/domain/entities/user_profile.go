@@ -6,12 +6,11 @@ const (
 	DefaultWeightUnit      = "kg"
 	DefaultTemperatureUnit = "celsius"
 	DefaultTimezone        = "UTC"
-	// DefaultAIQuestionsTotal is 10 to agree with the column default in
-	// 000001_init.up.sql and the gorm tag on models.UserProfileModel. It used to
-	// be 3, so users created through the API got 3 while rows created by any
-	// other path got 10. Resolving toward 10 needs no backfill and never shrinks
-	// an existing user's allowance.
-	DefaultAIQuestionsTotal = 10
+	// DefaultAIQuestionsTotal is 4 to agree with the column default set in
+	// 000010_reduce_default_ai_questions_total.up.sql and the gorm tag on
+	// models.UserProfileModel. Only applies to new profiles; existing users'
+	// AIQuestionsTotal is left untouched.
+	DefaultAIQuestionsTotal = 4
 )
 
 type UserProfile struct {

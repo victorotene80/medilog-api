@@ -1,0 +1,19 @@
+# Reverse proxy + automatic Let's Encrypt TLS for the API.
+#
+# {$MEDILOG_DOMAIN} is read from the environment Caddy is started with (the
+# `api` service passes env_file, but Caddy itself needs it too — set it in
+# the shell before `docker compose up`, e.g.:
+#   MEDILOG_DOMAIN=medilog-api.duckdns.org docker compose -f docker-compose.prod.yml up -d
+# or export it in .env and add `env_file: .env` to the caddy service if you'd
+# rather not repeat it on the command line.
+
+{$MEDILOG_DOMAIN} {
+	encode gzip zstd
+
+	reverse_proxy api:8080
+
+	log {
+		output stdout
+		format console
+	}
+}

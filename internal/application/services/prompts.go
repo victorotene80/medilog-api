@@ -149,3 +149,9 @@ Create a concise summary that captures:
 
 Maximum 200 words. Write in clear English regardless of conversation language.
 This summary will be used as context for future conversations with the same patient.`
+
+const promptClassifyTopic = `You classify whether a patient's question belongs in a medical records/medication assistant.
+Reply with exactly one word: ON_TOPIC or OFF_TOPIC.
+ON_TOPIC covers: medicines, dosages, symptoms, health conditions, allergies, appointments, medical records, drug interactions, or use of the Medilog app.
+Anything else (general knowledge, code, entertainment, unrelated small talk) is OFF_TOPIC.
+Do not explain your answer. Reply with exactly one word.`

@@ -15,7 +15,7 @@ type UserProfileModel struct {
 	TemperatureUnit             string     `gorm:"column:temperature_unit;default:celsius"`
 	Timezone                    string     `gorm:"column:timezone;not null;default:UTC"`
 	AIQuestionsUsed             int        `gorm:"column:ai_questions_used;not null;default:0"`
-	AIQuestionsTotal            int        `gorm:"column:ai_questions_total;not null;default:10"`
+	AIQuestionsTotal            int        `gorm:"column:ai_questions_total;not null;default:4"`
 	AIIsPro                     bool       `gorm:"column:ai_is_pro;not null;default:false"`
 	AIQuestionsResetAt          *time.Time `gorm:"column:ai_questions_reset_at"`
 	MedicationRemindersEnabled  bool       `gorm:"column:medication_reminders_enabled;not null;default:true"`
