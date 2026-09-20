@@ -48,6 +48,10 @@ services:
     mem_limit: "${REDIS_MEMORY_LIMIT:-512mb}"
     ports:
       - "127.0.0.1:6379:6379"
+    environment:
+      # Only for the healthcheck below to read — redis-server itself gets its
+      # password from --requirepass in `command`, not from this env var.
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"
     command:
       - "redis-server"
       - "--requirepass"
