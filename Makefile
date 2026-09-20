@@ -1,4 +1,5 @@
-.PHONY: test test-unit test-integration test-coverage test-build lint vet migrate-test
+.PHONY: test test-unit test-integration test-coverage test-build lint vet migrate-test \
+        docker-build gcp-deploy gcp-logs
 
 MIGRATE_TEST_CONTAINER ?= medilog-migrate-test
 MIGRATE_TEST_PORT      ?= 55432
@@ -113,3 +114,30 @@ help:
 	@echo "  make lint               Run golangci-lint"
 	@echo "  make vet                Run go vet"
 	@echo "  make clean              Remove coverage files"
+
+# ---------------------------------------------------------------------------
+# Container / Google Cloud
+# ---------------------------------------------------------------------------
+
+GCP_REGION   ?= us-central1
+GCP_SERVICE  ?= medilog-api
+TAG          ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo latest)
+
+# Cloud Run is amd64-only, so --platform is not optional on an Apple Silicon
+# machine: without it you get an arm64 image that Cloud Run refuses to start.
+docker-build:
+	@echo "=== Building linux/amd64 image ==="
+	docker build --platform linux/amd64 -t $(GCP_SERVICE):$(TAG) .
+
+# One pipeline: build -> push -> `migrate up` as a Cloud Run job -> deploy.
+# _CLOUDSQL_INSTANCE and _REDIS_HOST have no sensible defaults, so they are
+# required here rather than silently wrong.
+gcp-deploy:
+	@test -n "$(CLOUDSQL_INSTANCE)" || { echo "ERROR: set CLOUDSQL_INSTANCE=PROJECT:REGION:INSTANCE"; exit 1; }
+	@test -n "$(REDIS_HOST)" || { echo "ERROR: set REDIS_HOST=<memorystore private ip>"; exit 1; }
+	@echo "=== Submitting build $(TAG) to Cloud Build ==="
+	gcloud builds submit --config cloudbuild.yaml \
+		--substitutions=_TAG=$(TAG),_REGION=$(GCP_REGION),_SERVICE=$(GCP_SERVICE),_CLOUDSQL_INSTANCE=$(CLOUDSQL_INSTANCE),_REDIS_HOST=$(REDIS_HOST)
+
+gcp-logs:
+	gcloud run services logs tail $(GCP_SERVICE) --region $(GCP_REGION)

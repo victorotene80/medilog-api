@@ -3293,6 +3293,12 @@
                         "fahrenheit"
                     ]
                 },
+                "timezone": {
+                    "description": "Timezone is an IANA name such as \"Africa/Lagos\". Also settable on\nPATCH /users/me/notification-preferences; it is accepted here too because\nthis is the endpoint a client reaches for when filling in a profile, and\nleaving it out meant new users silently kept the UTC default and received\nevery reminder at the wrong local time.",
+                    "type": "string",
+                    "maxLength": 64,
+                    "minLength": 1
+                },
                 "weight": {
                     "type": "number",
                     "maximum": 700

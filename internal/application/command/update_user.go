@@ -23,4 +23,5 @@ type UpdateUserCommand struct {
 	Weight          *float64
 	WeightUnit      *string
 	TemperatureUnit *string
+	Timezone        *string
 }

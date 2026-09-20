@@ -127,6 +127,11 @@ type SchedulerConfig struct {
 	CatchupWindow time.Duration
 	LeadTime      time.Duration
 	BatchSize     int
+	// TickToken authenticates POST /internal/scheduler/reminders/tick, which is
+	// how Cloud Scheduler drives the scan now that the in-process ticker is off.
+	// Empty disables the route entirely rather than leaving it open: the scan
+	// writes notifications, so an unauthenticated caller could spam an inbox.
+	TickToken string
 }
 
 type SecurityConfig struct {

@@ -107,6 +107,7 @@ func loadScheduler() SchedulerConfig {
 		CatchupWindow: getDurationOrDefault("SCHEDULER_CATCHUP_WINDOW", 6*time.Hour),
 		LeadTime:      getDurationOrDefault("SCHEDULER_LEAD_TIME", 5*time.Minute),
 		BatchSize:     getIntOrDefault("SCHEDULER_BATCH_SIZE", 500),
+		TickToken:     getStringOrDefault("SCHEDULER_TICK_TOKEN", ""),
 	}
 }
 

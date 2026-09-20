@@ -25,6 +25,13 @@ type UpdateUserRequest struct {
 	Weight          *float64 `json:"weight"           validate:"omitempty,gt=0,lte=700"`
 	WeightUnit      *string  `json:"weight_unit"      validate:"omitempty,oneof=kg lb"`
 	TemperatureUnit *string  `json:"temperature_unit" validate:"omitempty,oneof=celsius fahrenheit"`
+
+	// Timezone is an IANA name such as "Africa/Lagos". Also settable on
+	// PATCH /users/me/notification-preferences; it is accepted here too because
+	// this is the endpoint a client reaches for when filling in a profile, and
+	// leaving it out meant new users silently kept the UTC default and received
+	// every reminder at the wrong local time.
+	Timezone *string `json:"timezone" validate:"omitempty,min=1,max=64"`
 }
 
 // UpdateNotificationPreferencesRequest is a partial update; nil means

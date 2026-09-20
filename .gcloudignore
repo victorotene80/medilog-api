@@ -1,0 +1,38 @@
+# Upload context for `gcloud builds submit` / `gcloud run deploy --source`.
+#
+# When this file is absent gcloud synthesises one from .gitignore, which would
+# be close but not identical. Being explicit keeps the upload deterministic and
+# guarantees docs/docs.go — a compile-time dependency of the router — is sent.
+
+.git
+.gitignore
+.github
+.idea
+.vscode
+.claude
+.DS_Store
+**/.DS_Store
+
+.env
+.env.*
+!.env.example
+http-client.private.env.json
+
+medilog-api
+__debug_bin*
+*.exe
+*.test
+*.out
+coverage.out
+coverage.html
+
+docker-compose.yml
+docker-compose.*.yml
+observability/
+api-tests/
+test/
+
+*.md
+*.txt
+docs/*.json
+docs/*.yaml

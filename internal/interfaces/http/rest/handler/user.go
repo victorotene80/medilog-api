@@ -103,6 +103,7 @@ func (h *UserHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 		Weight:          req.Weight,
 		WeightUnit:      req.WeightUnit,
 		TemperatureUnit: req.TemperatureUnit,
+		Timezone:        req.Timezone,
 	}
 
 	result, err := messaging.Execute[command.UpdateUserCommand, *dto.GetUserDTO](

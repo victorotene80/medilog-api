@@ -51,6 +51,19 @@ func (h *UpdateMedicationHandler) Handle(ctx context.Context, cmd command.Update
 		if err != nil {
 			return struct{}{}, fmt.Errorf("invalid frequency: %w", err)
 		}
+
+		// Checked on update as well as create, and against cmd.StartDate rather
+		// than m.StartDate: the assignment above is unconditional, so a PUT that
+		// omits start_date actively clears it. Switching an existing medication
+		// to once/weekly in the same request that drops its start date would
+		// otherwise silently stop its reminders.
+		if freq != nil && cmd.StartDate == nil &&
+			(*freq == valueobjects.FrequencyOnce || *freq == valueobjects.FrequencyWeekly) {
+			return struct{}{}, application.NewValidation(
+				"start_date is required when frequency is once or weekly",
+			)
+		}
+
 		m.Frequency = freq
 	} else {
 		m.Frequency = nil

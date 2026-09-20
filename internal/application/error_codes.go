@@ -66,4 +66,7 @@ const (
 	CodeContactCreate = "CONTACT_CREATE_FAILED"
 
 	CodeAIQuotaExceeded = "AI_QUOTA_EXCEEDED"
+
+	CodeSchedulerTickFailed    = "SCHEDULER_TICK_FAILED"
+	CodeSchedulerTickCompleted = "SCHEDULER_TICK_COMPLETED"
 )

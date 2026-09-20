@@ -44,6 +44,7 @@ type Router struct {
 	NotificationHandler     *handler.NotificationHandler
 	AuditLogHandler         *handler.AuditLogHandler
 	HealthHandler           *handler.HealthHandler
+	SchedulerHandler        *handler.SchedulerHandler
 	IsLive                  bool
 }
 
@@ -72,6 +73,7 @@ func NewRouter(
 	notificationHandler *handler.NotificationHandler,
 	auditLogHandler *handler.AuditLogHandler,
 	healthHandler *handler.HealthHandler,
+	schedulerHandler *handler.SchedulerHandler,
 	isLive bool,
 ) *Router {
 	return &Router{
@@ -100,6 +102,7 @@ func NewRouter(
 		NotificationHandler:     notificationHandler,
 		AuditLogHandler:         auditLogHandler,
 		HealthHandler:           healthHandler,
+		SchedulerHandler:        schedulerHandler,
 		IsLive:                  isLive,
 	}
 }
@@ -153,6 +156,28 @@ func (rt *Router) Setup() http.Handler {
 	})
 
 	rt.mux.Get("/health/ready", rt.HealthHandler.Ready)
+
+	// Driven by Cloud Scheduler once a minute, replacing the in-process ticker
+	// that Cloud Run's CPU throttling made unreliable. On the root mux rather
+	// than under /api/v1 because it is not part of the public API and must not
+	// pick up AuthMiddleware — the caller is a machine with a shared secret,
+	// not a user with a session.
+	//
+	// Unregistered entirely when SCHEDULER_ENABLED is false, so a misconfigured
+	// environment 404s here instead of quietly accepting ticks and doing
+	// nothing with them.
+	//
+	// The rate limit is a blast-radius cap, not a correctness control: the scan
+	// is already idempotent behind an advisory lock. 10/min leaves room for a
+	// Cloud Scheduler retry or a manual run while refusing a flood.
+	if rt.SchedulerHandler != nil {
+		rt.mux.With(rt.limit(appmw.RateLimitRule{
+			Name:      "scheduler_tick_ip",
+			Limit:     10,
+			Window:    time.Minute,
+			KeyFields: []string{"ip"},
+		})).Post("/internal/scheduler/reminders/tick", rt.SchedulerHandler.TickReminders)
+	}
 
 	// Prometheus scrapes this at /metrics on the container port (see
 	// observability/prometheus.yml), so it must stay on the root mux and off the

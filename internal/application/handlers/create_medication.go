@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	"github.com/victorotene80/medilog-api/internal/domain/aggregates"
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
@@ -45,6 +46,21 @@ func (h *CreateMedicationHandler) Handle(ctx context.Context, cmd command.Create
 		if err != nil {
 			return struct{}{}, fmt.Errorf("invalid frequency: %w", err)
 		}
+
+		// once and weekly are anchored to the start date — dayMatchesFrequency
+		// returns false for both when it is nil. Without this the medication
+		// saves happily and then never produces a single reminder, which is
+		// invisible until a user asks why they were never notified.
+		//
+		// freq can be nil here: NewMedicationFrequency maps an empty string to
+		// (nil, nil) rather than an error.
+		if freq != nil && cmd.StartDate == nil &&
+			(*freq == valueobjects.FrequencyOnce || *freq == valueobjects.FrequencyWeekly) {
+			return struct{}{}, application.NewValidation(
+				"start_date is required when frequency is once or weekly",
+			)
+		}
+
 		med.Frequency = freq
 	}
 

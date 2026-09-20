@@ -62,36 +62,59 @@ func New(bus *messaging.CommandBus, cfg Config, logger *zap.Logger) *ReminderSch
 	return &ReminderScheduler{bus: bus, cfg: cfg, logger: logger}
 }
 
-func (s *ReminderScheduler) Run(ctx context.Context) {
-	ticker := time.NewTicker(s.cfg.PollInterval)
-	defer ticker.Stop()
+// DISABLED — the in-process ticker below was replaced by Cloud Scheduler
+// calling POST /internal/scheduler/reminders/tick once a minute.
+//
+// Cloud Run only gives a container CPU while it is serving a request. Between
+// requests it is throttled to near zero and, at zero instances, stopped
+// outright — so this ticker fired erratically or not at all, and reminders
+// stopped going out with no error anywhere to show for it. Keeping it alive
+// meant --min-instances=1 --no-cpu-throttling, roughly $46/month to keep a
+// one-minute timer running.
+//
+// Tick is unchanged and is now driven by the HTTP handler instead. Nothing
+// about correctness moved: the advisory lock and dedupe index in
+// GenerateDueRemindersHandler already made concurrent runs safe, which is why
+// an external trigger is a drop-in for the internal one.
+//
+// To go back to the in-process ticker: uncomment this, restore the
+// `go sched.Run(ctx)` call in internal/bootstrap/scheduler.go, set
+// SCHEDULER_ENABLED=true, and redeploy with --min-instances=1
+// --no-cpu-throttling.
+//
+// func (s *ReminderScheduler) Run(ctx context.Context) {
+// 	ticker := time.NewTicker(s.cfg.PollInterval)
+// 	defer ticker.Stop()
+//
+// 	s.logger.Info("reminder scheduler started",
+// 		zap.Duration("poll_interval", s.cfg.PollInterval),
+// 		zap.Duration("catchup_window", s.cfg.CatchupWindow),
+// 		zap.Duration("lead_time", s.cfg.LeadTime),
+// 		zap.Int("batch_size", s.cfg.BatchSize),
+// 	)
+//
+// 	// Run once immediately so a restart does not leave a poll-interval hole.
+// 	if err := s.tick(ctx); err != nil {
+// 		s.logger.Error("reminder scheduler tick error", zap.Error(err))
+// 	}
+//
+// 	for {
+// 		select {
+// 		case <-ctx.Done():
+// 			s.logger.Info("reminder scheduler stopping")
+// 			return
+// 		case <-ticker.C:
+// 			if err := s.tick(ctx); err != nil {
+// 				s.logger.Error("reminder scheduler tick error", zap.Error(err))
+// 			}
+// 		}
+// 	}
+// }
 
-	s.logger.Info("reminder scheduler started",
-		zap.Duration("poll_interval", s.cfg.PollInterval),
-		zap.Duration("catchup_window", s.cfg.CatchupWindow),
-		zap.Duration("lead_time", s.cfg.LeadTime),
-		zap.Int("batch_size", s.cfg.BatchSize),
-	)
-
-	// Run once immediately so a restart does not leave a poll-interval hole.
-	if err := s.tick(ctx); err != nil {
-		s.logger.Error("reminder scheduler tick error", zap.Error(err))
-	}
-
-	for {
-		select {
-		case <-ctx.Done():
-			s.logger.Info("reminder scheduler stopping")
-			return
-		case <-ticker.C:
-			if err := s.tick(ctx); err != nil {
-				s.logger.Error("reminder scheduler tick error", zap.Error(err))
-			}
-		}
-	}
-}
-
-func (s *ReminderScheduler) tick(ctx context.Context) error {
+// Tick runs one reminder scan. Safe to call concurrently across replicas: the
+// handler takes an advisory lock and returns LockNotAcquired rather than an
+// error when another run holds it.
+func (s *ReminderScheduler) Tick(ctx context.Context) error {
 	now := time.Now().UTC()
 
 	result, err := messaging.Execute[

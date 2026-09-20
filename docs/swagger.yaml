@@ -540,6 +540,16 @@ definitions:
         - celsius
         - fahrenheit
         type: string
+      timezone:
+        description: |-
+          Timezone is an IANA name such as "Africa/Lagos". Also settable on
+          PATCH /users/me/notification-preferences; it is accepted here too because
+          this is the endpoint a client reaches for when filling in a profile, and
+          leaving it out meant new users silently kept the UTC default and received
+          every reminder at the wrong local time.
+        maxLength: 64
+        minLength: 1
+        type: string
       weight:
         maximum: 700
         type: number

@@ -4,7 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
+	"net/url"
 	"os"
+	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -20,13 +23,14 @@ func main() {
 
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		host := getEnvOrDefault("DB_HOST", "localhost")
-		port := getEnvOrDefault("DB_PORT", "5432")
-		user := getEnvOrDefault("DB_USER", "postgres")
-		password := getEnvOrDefault("DB_PASSWORD", "postgres")
-		name := getEnvOrDefault("DB_NAME", "medilog")
-		sslmode := getEnvOrDefault("DB_SSLMODE", "disable")
-		dsn = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", user, password, host, port, name, sslmode)
+		dsn = buildDSN(
+			getEnvOrDefault("DB_HOST", "localhost"),
+			getEnvOrDefault("DB_PORT", "5432"),
+			getEnvOrDefault("DB_USER", "postgres"),
+			getEnvOrDefault("DB_PASSWORD", "postgres"),
+			getEnvOrDefault("DB_NAME", "medilog"),
+			getEnvOrDefault("DB_SSLMODE", "disable"),
+		)
 	}
 
 	source := "file://migrations"
@@ -109,6 +113,40 @@ func main() {
 	default:
 		log.Fatalf("Unknown action: %s. Available: up, down, status, goto, force, create", action)
 	}
+}
+
+// buildDSN assembles the connection URL for golang-migrate's postgres driver,
+// which is lib/pq.
+//
+// An absolute DB_HOST means a unix socket — that is how Cloud SQL exposes an
+// instance to Cloud Run, as /cloudsql/PROJECT:REGION:INSTANCE. lib/pq only
+// reads the socket directory from the `host` query parameter; an absolute path
+// in the URL authority does not parse, so the naive
+// postgres://user:pass@HOST:PORT/db form silently produces garbage there.
+//
+// sslmode is forced to disable on a socket because lib/pq (v1.10.9) calls
+// ssl() unconditionally and would try a TLS handshake the socket cannot serve.
+// Nothing is weakened by that: the Cloud SQL connector already encrypts the
+// hop, and a local socket never leaves the machine.
+func buildDSN(host, port, user, password, name, sslmode string) string {
+	u := &url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(user, password),
+		Path:   "/" + name,
+	}
+
+	q := url.Values{}
+	if strings.HasPrefix(host, "/") {
+		q.Set("host", host)
+		q.Set("port", port)
+		q.Set("sslmode", "disable")
+	} else {
+		u.Host = net.JoinHostPort(host, port)
+		q.Set("sslmode", sslmode)
+	}
+	u.RawQuery = q.Encode()
+
+	return u.String()
 }
 
 func getEnvOrDefault(key, defaultValue string) string {

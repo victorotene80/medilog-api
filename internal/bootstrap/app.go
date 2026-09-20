@@ -127,20 +127,20 @@ func InitializeApp() (*App, error) {
 		return nil, err
 	}
 
-	// Started after the command bus exists, since the ticker dispatches onto it.
-	stopScheduler := initializeScheduler(commandBus, cfg, logger)
+	// Built after the command bus exists, since the scan dispatches onto it.
+	reminderScanner := initializeScheduler(commandBus, cfg, logger)
 
-	router := initializeHTTP(commandBus, logger, authSvc, redisClient, persistenceLayer.DB, cfg.Telemetry.Enabled, cfg)
+	router := initializeHTTP(commandBus, logger, authSvc, redisClient, persistenceLayer.DB, cfg.Telemetry.Enabled, cfg, reminderScanner)
 
 	stop := func() {
 		if router.RateLimiter != nil {
 			router.RateLimiter.Stop()
 		}
 
-		// Before stopMessaging, so a tick already in flight can finish
-		// publishing rather than losing its events.
-		stopScheduler()
-
+		// The scheduler no longer owns a goroutine to cancel. A tick now runs
+		// inside an HTTP request, so http.Server.Shutdown already waits for one
+		// in flight to finish publishing before stopMessaging runs — provided
+		// this stays ordered after the server has been shut down, as it is.
 		stopMessaging()
 
 		if tel != nil {

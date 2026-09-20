@@ -8,6 +8,7 @@ import (
 	"github.com/victorotene80/medilog-api/internal/application/messaging"
 
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
+	"github.com/victorotene80/medilog-api/internal/infrastructure/scheduler"
 	"github.com/victorotene80/medilog-api/internal/infrastructure/validation"
 
 	"github.com/victorotene80/medilog-api/internal/interfaces/http/rest"
@@ -24,6 +25,7 @@ func initializeHTTP(
 	db *gorm.DB,
 	telemetryEnabled bool,
 	cfg *config.Config,
+	reminderScanner *scheduler.ReminderScheduler,
 ) *rest.Router {
 	validate := validation.NewPlaygroundValidator()
 
@@ -63,6 +65,14 @@ func initializeHTTP(
 	//  Health handlers
 	healthHandler := restHandler.NewHealthHandler(db, redisClient)
 
+	//  Internal scheduler handler. Nil when SCHEDULER_ENABLED is false, which
+	//  leaves the tick route unregistered — a typed nil in the interface would
+	//  register a route that panics on the first call.
+	var schedulerHandler *restHandler.SchedulerHandler
+	if reminderScanner != nil {
+		schedulerHandler = restHandler.NewSchedulerHandler(reminderScanner, cfg.Scheduler.TickToken, logger)
+	}
+
 	authMiddleware := appmw.NewAuthMiddleware(authSvc, logger)
 	adminMiddleware := appmw.NewAdminMiddleware(authSvc, logger)
 	rateLimiter := appmw.NewRateLimiter(redisClient, logger)
@@ -101,6 +111,7 @@ func initializeHTTP(
 		notificationHandler,
 		auditLogHandler,
 		healthHandler,
+		schedulerHandler,
 		cfg.App.IsLive,
 	)
 

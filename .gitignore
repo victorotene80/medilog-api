@@ -1,3 +1,8 @@
+# Database dumps. Anchored to the repo root so migrations/*.sql stays tracked —
+# a dump carries real rows (emails, password hashes, refresh tokens) and must
+# never be committed, while the migration files are source.
+/*.sql
+
 # Secrets and local environment
 .env
 .env.local

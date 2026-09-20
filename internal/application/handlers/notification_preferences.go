@@ -3,8 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"strings"
-	"time"
 
 	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
@@ -12,6 +10,7 @@ import (
 	"github.com/victorotene80/medilog-api/internal/application/query"
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
 	"github.com/victorotene80/medilog-api/internal/domain/repository"
+	"github.com/victorotene80/medilog-api/internal/domain/valueobjects"
 )
 
 // GetNotificationPreferencesHandler reads the caller's delivery preferences.
@@ -79,17 +78,9 @@ func (h *UpdateNotificationPreferencesHandler) Handle(
 	// Validate before mutating so a bad timezone cannot leave half the toggles
 	// applied.
 	if cmd.Timezone != nil {
-		tz := strings.TrimSpace(*cmd.Timezone)
-		if tz == "" {
-			return nil, application.NewValidation("timezone cannot be empty")
-		}
-
-		// The scheduler calls time.LoadLocation on this value on every tick.
-		// Rejecting it here is what keeps an unresolvable zone out of the table.
-		if _, err := time.LoadLocation(tz); err != nil {
-			return nil, application.NewValidation(
-				"timezone must be a valid IANA name, for example Africa/Lagos",
-			)
+		tz, err := valueobjects.NewTimezone(*cmd.Timezone)
+		if err != nil {
+			return nil, application.NewValidation(err.Error())
 		}
 
 		profile.Timezone = tz

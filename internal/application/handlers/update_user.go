@@ -126,8 +126,11 @@ func applyUserFields(user *entities.User, cmd command.UpdateUserCommand) error {
 }
 
 func applyProfileFields(agg *aggregates.UserAggregate, cmd command.UpdateUserCommand) error {
+	// Every profile-backed field has to be listed here. Omitting one makes a
+	// request that carries only that field return 200 and change nothing.
 	if cmd.Height == nil && cmd.Weight == nil &&
-		cmd.WeightUnit == nil && cmd.TemperatureUnit == nil {
+		cmd.WeightUnit == nil && cmd.TemperatureUnit == nil &&
+		cmd.Timezone == nil {
 		return nil
 	}
 
@@ -165,6 +168,14 @@ func applyProfileFields(agg *aggregates.UserAggregate, cmd command.UpdateUserCom
 			return application.NewValidation("temperature unit must be celsius or fahrenheit")
 		}
 		agg.Profile.TemperatureUnit = unit
+	}
+
+	if cmd.Timezone != nil {
+		tz, err := valueobjects.NewTimezone(*cmd.Timezone)
+		if err != nil {
+			return application.NewValidation(err.Error())
+		}
+		agg.Profile.Timezone = tz
 	}
 
 	return nil
