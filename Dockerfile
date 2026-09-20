@@ -1,9 +1,12 @@
-# Cross-compiling builder: runs natively on the build machine but emits a
-# binary for the *target* platform. Deployed via `docker compose build` run
-# directly on the Oracle arm64 VM, so TARGETARCH is auto-populated as arm64
-# there with no flags needed; --platform still lets you cross-build for a
-# different target (e.g. testing an amd64 image on a Mac) when needed.
-FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS builder
+# Deployed via `docker compose build` run directly on the Oracle arm64 VM —
+# a native build, not a cross-compile. GOOS/GOARCH are deliberately left
+# unset below so `go build` targets whatever architecture this builder
+# stage is actually running on, which always matches the runner stage
+# since neither specifies --platform. Pinning them to a fixed value here
+# previously shipped an amd64 binary onto an arm64 host ("exec format
+# error") because ARG TARGETARCH's default doesn't get auto-populated by
+# a plain `docker compose build` the way `docker buildx build` does.
+FROM golang:1.25-alpine AS builder
 
 RUN apk add --no-cache git ca-certificates tzdata
 
@@ -15,13 +18,11 @@ RUN go mod download
 
 COPY . .
 
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
 # CGO off => fully static binary, so the runner stage needs no libc.
 # -trimpath strips local filesystem paths out of the binary.
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+RUN CGO_ENABLED=0 \
     go build -trimpath -ldflags="-s -w" -o /out/medilog-api . \
- && CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+ && CGO_ENABLED=0 \
     go build -trimpath -ldflags="-s -w" -o /out/migrate ./cmd/migrate
 
 FROM alpine:3.20 AS runner
