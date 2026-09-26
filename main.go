@@ -43,10 +43,13 @@ func main() {
 	}
 
 	server := &http.Server{
-		Addr:         ":" + port,
-		Handler:      app.Router,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		Addr:        ":" + port,
+		Handler:     app.Router,
+		ReadTimeout: 10 * time.Second,
+		// Must exceed the AI message path (a topic check plus a chat call, each
+		// bounded by CLAUDE_TIMEOUT); when it doesn't, the connection is cut
+		// mid-request and Caddy answers 502 with an empty body.
+		WriteTimeout: 90 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 

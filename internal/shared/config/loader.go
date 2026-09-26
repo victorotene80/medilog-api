@@ -303,6 +303,7 @@ func loadClaude() (ClaudeConfig, error) {
 		MaxTokens:   getIntOrDefault("CLAUDE_MAX_TOKENS", 1024),
 		APIVersion:  getStringOrDefault("CLAUDE_API_VERSION", "2023-06-01"),
 		WorkspaceID: getStringOrDefault("CLAUDE_WORKSPACE_ID", ""),
+		Timeout:     getDurationOrDefault("CLAUDE_TIMEOUT", 30*time.Second),
 	}, nil
 }
 

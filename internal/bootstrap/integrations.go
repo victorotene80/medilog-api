@@ -28,11 +28,11 @@ func initializeExternalServices(
 	return ExternalServices{
 		GoogleAuth: googleauth.NewAuthService(cfg.Google),
 		SMSSender:  buildSMSSender(cfg, httpService),
-		AIModel:    buildAIModelService(cfg, httpService),
+		AIModel:    buildAIModelService(cfg),
 	}
 }
 
-func buildAIModelService(cfg *config.Config, httpService httpclient.HTTPService) contracts.AIModelService {
+func buildAIModelService(cfg *config.Config) contracts.AIModelService {
 	if !cfg.AI.Enabled {
 		return aiinfra.NewNoopModelService("AI is disabled")
 	}
@@ -43,7 +43,10 @@ func buildAIModelService(cfg *config.Config, httpService httpclient.HTTPService)
 			return aiinfra.NewNoopModelService("Claude API key is missing")
 		}
 
-		claudeService := claude.NewDefaultClaudeService(cfg.Claude, httpService)
+		// A full chat reply routinely outlasts the 10s shared client used for
+		// SMS, so Claude gets its own client with a longer budget.
+		claudeHTTP := initializeHTTPClient(config.HTTPConfig{Timeout: cfg.Claude.Timeout})
+		claudeService := claude.NewDefaultClaudeService(cfg.Claude, claudeHTTP)
 		return claude.NewClaudeModelAdapter(claudeService)
 	default:
 		return aiinfra.NewNoopModelService("unsupported provider " + cfg.AI.Provider)

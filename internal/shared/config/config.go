@@ -48,6 +48,7 @@ type ClaudeConfig struct {
 	MaxTokens   int
 	APIVersion  string
 	WorkspaceID string
+	Timeout     time.Duration
 }
 
 type BulkSmsConfig struct {
