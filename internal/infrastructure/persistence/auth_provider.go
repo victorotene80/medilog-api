@@ -30,8 +30,13 @@ func (r *UserAuthProviderRepository) FindByProviderUID(
 ) (*entities.UserAuthProvider, error) {
 	var model models.UserAuthProviderModel
 
+	// Links are never removed when an account is soft-deleted, so without the
+	// join a deleted user's Google ID resolves to a user FindByID cannot load,
+	// and that person can neither sign in nor sign up again.
 	err := conn(ctx, r.db).
-		Where("provider = ? AND provider_uid = ?", provider, providerUID).
+		Select("user_auth_providers.*").
+		Joins("JOIN users ON users.id = user_auth_providers.user_id AND users.deleted_at IS NULL").
+		Where("user_auth_providers.provider = ? AND user_auth_providers.provider_uid = ?", provider, providerUID).
 		First(&model).Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {

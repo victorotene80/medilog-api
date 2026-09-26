@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
@@ -16,6 +17,7 @@ import (
 	"github.com/victorotene80/medilog-api/internal/domain/events"
 	"github.com/victorotene80/medilog-api/internal/domain/repository"
 	"github.com/victorotene80/medilog-api/internal/shared/requestmeta"
+	"go.uber.org/zap"
 )
 
 type GoogleAuthHandler struct {
@@ -61,7 +63,11 @@ func (h *GoogleAuthHandler) Handle(
 
 	googleUser, err := h.googleService.VerifyIDToken(ctx, cmd.IDToken)
 	if err != nil {
-		return nil, err
+		// The cause is logged, not returned: an audience mismatch here is the
+		// usual symptom of GOOGLE_CLIENT_ID not matching the app's server client
+		// ID, and operators need that text while the client must not see it.
+		zap.L().Warn("google id token rejected", zap.Error(err))
+		return nil, application.NewUnauthorized("invalid google credentials")
 	}
 
 	email := strings.TrimSpace(googleUser.Email)
@@ -113,6 +119,10 @@ func (h *GoogleAuthHandler) Handle(
 	}
 
 	if existingUser != nil {
+		if isLocked(existingUser, now) {
+			return nil, application.NewForbidden("account is locked")
+		}
+
 		provider := entities.NewUserAuthProvider(
 			existingUser.ID,
 			"google",
@@ -201,6 +211,10 @@ func (h *GoogleAuthHandler) loginExistingUser(
 ) (*dto.GoogleAuthResultDTO, error) {
 	if user == nil {
 		return nil, fmt.Errorf("user is required")
+	}
+
+	if isLocked(user, now) {
+		return nil, application.NewForbidden("account is locked")
 	}
 
 	user.LastLoginAt = &now
@@ -298,6 +312,12 @@ func (h *GoogleAuthHandler) publishEvent(
 	}
 
 	_ = h.eventPublisher.Publish(ctx, domainEvents, eventMeta.ToMetadata())
+}
+
+// isLocked mirrors UserAggregate.IsLocked. Without it Google sign-in bypassed a
+// password lockout and then cleared it via ResetFailedLogins.
+func isLocked(user *entities.User, now time.Time) bool {
+	return user.LockedUntil != nil && now.Before(*user.LockedUntil)
 }
 
 func resolveGoogleName(first string, last string, full string) (string, string) {
