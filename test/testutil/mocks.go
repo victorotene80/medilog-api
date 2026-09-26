@@ -391,3 +391,91 @@ func (m *MockSessionTokenCache) RefreshTTL(ctx context.Context, key string) erro
 	args := m.Called(ctx, key)
 	return args.Error(0)
 }
+
+type MockRegisteredMedicineRepo struct {
+	mock.Mock
+}
+
+func (m *MockRegisteredMedicineRepo) FindByID(ctx context.Context, id int64) (*entities.RegisteredMedicine, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.RegisteredMedicine), args.Error(1)
+}
+
+func (m *MockRegisteredMedicineRepo) FindByRegistrationNumber(ctx context.Context, registrationNumber, countryCode string) (*entities.RegisteredMedicine, error) {
+	args := m.Called(ctx, registrationNumber, countryCode)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.RegisteredMedicine), args.Error(1)
+}
+
+func (m *MockRegisteredMedicineRepo) FindByBarcode(ctx context.Context, barcode string) (*entities.RegisteredMedicine, error) {
+	args := m.Called(ctx, barcode)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.RegisteredMedicine), args.Error(1)
+}
+
+func (m *MockRegisteredMedicineRepo) Search(ctx context.Context, drugName, countryCode string, limit int) ([]*entities.RegisteredMedicine, error) {
+	args := m.Called(ctx, drugName, countryCode, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entities.RegisteredMedicine), args.Error(1)
+}
+
+func (m *MockRegisteredMedicineRepo) Save(ctx context.Context, e *entities.RegisteredMedicine) error {
+	return m.Called(ctx, e).Error(0)
+}
+
+func (m *MockRegisteredMedicineRepo) Update(ctx context.Context, e *entities.RegisteredMedicine) error {
+	return m.Called(ctx, e).Error(0)
+}
+
+func (m *MockRegisteredMedicineRepo) Delete(ctx context.Context, id int64) error {
+	return m.Called(ctx, id).Error(0)
+}
+
+type MockDrugScanRepo struct {
+	mock.Mock
+}
+
+func (m *MockDrugScanRepo) FindByID(ctx context.Context, id int64) (*entities.DrugScan, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.DrugScan), args.Error(1)
+}
+
+func (m *MockDrugScanRepo) FindByPublicID(ctx context.Context, userID int64, publicID string) (*entities.DrugScan, error) {
+	args := m.Called(ctx, userID, publicID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.DrugScan), args.Error(1)
+}
+
+func (m *MockDrugScanRepo) FindByUserID(ctx context.Context, userID int64) ([]*entities.DrugScan, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entities.DrugScan), args.Error(1)
+}
+
+func (m *MockDrugScanRepo) Save(ctx context.Context, scan *entities.DrugScan) error {
+	return m.Called(ctx, scan).Error(0)
+}
+
+func (m *MockDrugScanRepo) Update(ctx context.Context, scan *entities.DrugScan) error {
+	return m.Called(ctx, scan).Error(0)
+}
+
+func (m *MockDrugScanRepo) Delete(ctx context.Context, id int64) error {
+	return m.Called(ctx, id).Error(0)
+}

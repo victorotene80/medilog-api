@@ -19,6 +19,8 @@ const (
 	verificationStatusExpired    = "expired"
 	verificationStatusUnverified = "unverified"
 	verificationStatusNotFound   = "not_found"
+
+	nameSearchLimit = 20
 )
 
 type VerifyDrugScanHandler struct {
@@ -58,34 +60,38 @@ func (h *VerifyDrugScanHandler) Handle(
 
 	var matched *entities.RegisteredMedicine
 
-	if cmd.RegistrationNumber != nil && strings.TrimSpace(*cmd.RegistrationNumber) != "" {
-		found, err := h.registeredMedicines.FindByRegistrationNumber(
-			ctx,
-			strings.TrimSpace(*cmd.RegistrationNumber),
-			cmd.CountryCode,
-		)
+	regNumber := ""
+	if cmd.RegistrationNumber != nil {
+		regNumber = strings.TrimSpace(*cmd.RegistrationNumber)
+	}
+	drugName := ""
+	if cmd.DrugName != nil {
+		drugName = strings.TrimSpace(*cmd.DrugName)
+	}
+
+	switch {
+	case regNumber != "":
+		// No name fallback when the number misses: an unregistered number is
+		// the counterfeit signal, and a fuzzy name hit would "verify" an
+		// unrelated product.
+		found, err := h.registeredMedicines.FindByRegistrationNumber(ctx, regNumber, cmd.CountryCode)
 		if err != nil {
 			return dto.DrugScanDTO{}, fmt.Errorf("lookup registered medicine: %w", err)
 		}
 		matched = found
-	}
+		h.populateScanResult(scan, matched, now)
 
-	if matched == nil && cmd.DrugName != nil && strings.TrimSpace(*cmd.DrugName) != "" {
-		results, err := h.registeredMedicines.Search(
-			ctx,
-			strings.TrimSpace(*cmd.DrugName),
-			cmd.CountryCode,
-			5,
-		)
+	case drugName != "":
+		results, err := h.registeredMedicines.Search(ctx, drugName, cmd.CountryCode, nameSearchLimit)
 		if err != nil {
 			return dto.DrugScanDTO{}, fmt.Errorf("search registered medicine: %w", err)
 		}
-		if len(results) > 0 {
-			matched = results[0]
-		}
-	}
+		matched = exactNameMatch(results, drugName)
+		populateNameOnlyResult(scan, matched)
 
-	h.populateScanResult(scan, matched, now)
+	default:
+		h.populateScanResult(scan, nil, now)
+	}
 
 	if err := h.drugScans.Save(ctx, scan); err != nil {
 		return dto.DrugScanDTO{}, fmt.Errorf("save drug scan: %w", err)
@@ -135,10 +141,7 @@ func (h *VerifyDrugScanHandler) populateScanResult(
 		return
 	}
 
-	lotValid := true
-	if scan.ExpiryDate != nil && now.After(*scan.ExpiryDate) {
-		lotValid = false
-	}
+	lotValid := scan.ExpiryDate == nil || !lotExpired(*scan.ExpiryDate, now)
 	scan.LotNumberValid = &lotValid
 
 	status := verificationStatusVerified
@@ -189,4 +192,57 @@ func toScanDTO(scan *entities.DrugScan, matched *entities.RegisteredMedicine) dt
 	}
 
 	return d
+}
+
+// lotExpired treats the expiry as month-granular: packs print only month and
+// year, the client sends the 1st of that month, and a pack labelled "Oct 2028"
+// is good through the last day of October.
+func lotExpired(expiry, now time.Time) bool {
+	expiry = expiry.UTC()
+	firstOfNextMonth := time.Date(expiry.Year(), expiry.Month()+1, 1, 0, 0, 0, 0, time.UTC)
+	return !now.Before(firstOfNextMonth)
+}
+
+// populateNameOnlyResult never verifies: a name is printed on every copy of a
+// product, genuine or not, so only a registration number can confirm one.
+func populateNameOnlyResult(scan *entities.DrugScan, matched *entities.RegisteredMedicine) {
+	if matched == nil {
+		status := verificationStatusNotFound
+		explanation := "No registered product with this name was found. Enter the registration number from the pack to verify it."
+		score := 0.0
+		scan.IsVerified = false
+		scan.VerificationStatus = &status
+		scan.Explanation = &explanation
+		scan.ConfidenceScore = &score
+		return
+	}
+
+	scan.RegisteredMedicineID = &matched.ID
+	scan.RegulatoryBodyID = &matched.RegulatoryBodyID
+
+	status := verificationStatusUnverified
+	explanation := "A registered product has this name, but it can only be verified with the registration number from the pack."
+	score := 0.3
+	scan.IsVerified = false
+	scan.VerificationStatus = &status
+	scan.Explanation = &explanation
+	scan.ConfidenceScore = &score
+}
+
+// exactNameMatch rejects substring hits so that "test" cannot resolve to
+// "Pregnancy Test Strip".
+func exactNameMatch(candidates []*entities.RegisteredMedicine, name string) *entities.RegisteredMedicine {
+	want := normalizeDrugName(name)
+	for _, c := range candidates {
+		if normalizeDrugName(c.DrugName) == want {
+			return c
+		}
+	}
+	return nil
+}
+
+// normalizeDrugName strips the "#" prefix the registry puts on some names.
+func normalizeDrugName(name string) string {
+	name = strings.TrimLeft(strings.TrimSpace(name), "#")
+	return strings.ToLower(strings.Join(strings.Fields(name), " "))
 }

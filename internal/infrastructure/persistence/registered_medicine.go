@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/victorotene80/medilog-api/internal/domain/entities"
@@ -60,6 +61,10 @@ func (r *RegisteredMedicineRepository) FindByBarcode(ctx context.Context, barcod
 	return models.RegisteredMedicineToEntity(&m), nil
 }
 
+// likeEscaper keeps user-typed "%" and "_" literal; unescaped, a bare "%"
+// matches every row in the country.
+var likeEscaper = strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`)
+
 func (r *RegisteredMedicineRepository) Search(
 	ctx context.Context,
 	drugName, countryCode string,
@@ -67,7 +72,7 @@ func (r *RegisteredMedicineRepository) Search(
 ) ([]*entities.RegisteredMedicine, error) {
 	var ms []models.RegisteredMedicineModel
 	q := conn(ctx, r.db).
-		Where("country_code = ? AND drug_name ILIKE ?", countryCode, "%"+drugName+"%").
+		Where(`country_code = ? AND drug_name ILIKE ? ESCAPE '\'`, countryCode, "%"+likeEscaper.Replace(drugName)+"%").
 		Limit(limit).
 		Find(&ms)
 	if q.Error != nil {
