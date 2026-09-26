@@ -13,33 +13,6 @@ import (
 	"github.com/victorotene80/medilog-api/test/testutil"
 )
 
-func TestLotExpired(t *testing.T) {
-	expiry := time.Date(2028, 10, 1, 0, 0, 0, 0, time.UTC)
-
-	tests := []struct {
-		name string
-		now  time.Time
-		want bool
-	}{
-		{name: "before expiry month", now: time.Date(2028, 9, 30, 12, 0, 0, 0, time.UTC), want: false},
-		{name: "mid expiry month", now: time.Date(2028, 10, 15, 0, 0, 0, 0, time.UTC), want: false},
-		{name: "last instant of expiry month", now: time.Date(2028, 10, 31, 23, 59, 59, 0, time.UTC), want: false},
-		{name: "first day after expiry month", now: time.Date(2028, 11, 1, 0, 0, 0, 0, time.UTC), want: true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, lotExpired(expiry, tt.now))
-		})
-	}
-}
-
-func TestLotExpired_DecemberRollsIntoNextYear(t *testing.T) {
-	expiry := time.Date(2028, 12, 1, 0, 0, 0, 0, time.UTC)
-
-	assert.False(t, lotExpired(expiry, time.Date(2028, 12, 31, 23, 0, 0, 0, time.UTC)))
-	assert.True(t, lotExpired(expiry, time.Date(2029, 1, 1, 0, 0, 0, 0, time.UTC)))
-}
-
 func TestVerifyDrugScanHandler_Handle(t *testing.T) {
 	now := time.Date(2026, 9, 26, 12, 0, 0, 0, time.UTC)
 	strip := &entities.RegisteredMedicine{ID: 7, DrugName: "#Apex Pregancy Test Strip", RegistrationNumber: "03-6507", CountryCode: "NG", Status: true}

@@ -2,10 +2,7 @@ package handler
 
 import (
 	"net/http"
-	"strings"
-	"time"
 
-	"github.com/victorotene80/medilog-api/internal/application"
 	"github.com/victorotene80/medilog-api/internal/application/command"
 	appContracts "github.com/victorotene80/medilog-api/internal/application/contracts"
 	"github.com/victorotene80/medilog-api/internal/application/dto"
@@ -50,19 +47,11 @@ func (h *ScanHandler) VerifyDrug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expiry, ok := parseExpiryDate(req.ExpiryDate)
-	if !ok {
-		response.Error(w, http.StatusBadRequest, application.CodeInvalidDate,
-			"expiry_date must be YYYY-MM, YYYY-MM-DD or an RFC3339 datetime", nil)
-		return
-	}
-
 	cmd := command.VerifyDrugScanCommand{
 		UserID:             userID,
 		DrugName:           req.DrugName,
 		RegistrationNumber: req.RegistrationNumber,
 		CountryCode:        req.CountryCode,
-		ExpiryDate:         expiry,
 	}
 
 	result, err := messaging.Execute[command.VerifyDrugScanCommand, dto.DrugScanDTO](
@@ -141,19 +130,4 @@ func (h *ScanHandler) GetDrugScan(w http.ResponseWriter, r *http.Request) {
 
 	resp := mapper.DrugScanDTOToResponse(*result)
 	response.Success[response.DrugScanResponse](w, http.StatusOK, "SCAN_FETCHED", "Drug scan retrieved", &resp)
-}
-
-// parseExpiryDate accepts YYYY-MM (read as the 1st of the month) because drug
-// packs carry only month and year.
-func parseExpiryDate(raw *string) (*time.Time, bool) {
-	if raw == nil || strings.TrimSpace(*raw) == "" {
-		return nil, true
-	}
-	value := strings.TrimSpace(*raw)
-	for _, layout := range []string{time.RFC3339, time.DateOnly, "2006-01"} {
-		if t, err := time.Parse(layout, value); err == nil {
-			return &t, true
-		}
-	}
-	return nil, false
 }

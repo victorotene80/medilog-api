@@ -40,7 +40,7 @@ func TestScanHandler_VerifyDrug_Success(t *testing.T) {
 
 	h := NewScanHandler(bus, validator)
 
-	body := `{"drug_name":"Aspirin","registration_number":"REG-001","country_code":"NG","expiry_date":"2025-01-15T12:00:00Z"}`
+	body := `{"drug_name":"Aspirin","registration_number":"REG-001","country_code":"NG"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/drugs/verify", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	ctx := SetupTestContext("123", "456")
@@ -273,51 +273,3 @@ func TestScanHandler_GetDrugScan_NotFound(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
-
-func TestParseExpiryDate(t *testing.T) {
-	tests := []struct {
-		name    string
-		input   *string
-		want    *time.Time
-		wantErr bool
-	}{
-		{name: "nil", input: nil},
-		{name: "blank", input: strPtr("  ")},
-		{name: "year-month is first of month", input: strPtr("2028-10"), want: timePtr(time.Date(2028, 10, 1, 0, 0, 0, 0, time.UTC))},
-		{name: "date only", input: strPtr("2028-10-15"), want: timePtr(time.Date(2028, 10, 15, 0, 0, 0, 0, time.UTC))},
-		{name: "rfc3339", input: strPtr("2028-10-15T12:00:00Z"), want: timePtr(time.Date(2028, 10, 15, 12, 0, 0, 0, time.UTC))},
-		{name: "ocr text", input: strPtr("Oct  2028"), wantErr: true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, ok := parseExpiryDate(tt.input)
-			assert.Equal(t, !tt.wantErr, ok)
-			if tt.want == nil {
-				assert.Nil(t, got)
-				return
-			}
-			assert.True(t, tt.want.Equal(*got))
-		})
-	}
-}
-
-func TestScanHandler_VerifyDrug_InvalidExpiryDate(t *testing.T) {
-	bus := messaging.NewCommandBus()
-	validator := new(testutil.MockValidator)
-	validator.On("Struct", mock.Anything).Return(nil)
-
-	h := NewScanHandler(bus, validator)
-
-	body := `{"drug_name":"test","registration_number":"M26E006","country_code":"NG","expiry_date":"Oct  2028"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/drugs/verify", bytes.NewBufferString(body))
-	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(SetupTestContext("123", "456"))
-	w := httptest.NewRecorder()
-
-	h.VerifyDrug(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "expiry_date must be YYYY-MM")
-}
-
-func timePtr(t time.Time) *time.Time { return &t }

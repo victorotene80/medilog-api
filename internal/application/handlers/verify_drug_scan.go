@@ -54,7 +54,6 @@ func (h *VerifyDrugScanHandler) Handle(
 		UserID:             cmd.UserID,
 		DrugName:           cmd.DrugName,
 		RegistrationNumber: cmd.RegistrationNumber,
-		ExpiryDate:         cmd.ExpiryDate,
 		CreatedAt:          now,
 	}
 
@@ -141,18 +140,11 @@ func (h *VerifyDrugScanHandler) populateScanResult(
 		return
 	}
 
-	lotValid := scan.ExpiryDate == nil || !lotExpired(*scan.ExpiryDate, now)
-	scan.LotNumberValid = &lotValid
-
 	status := verificationStatusVerified
 	score := 1.0
 	explanation := "Drug verified successfully against the registry."
-	if !lotValid {
-		score = 0.7
-		explanation = "Drug is registered and active but the physical expiry date has passed."
-	}
 
-	scan.IsVerified = lotValid
+	scan.IsVerified = true
 	scan.VerificationStatus = &status
 	scan.Explanation = &explanation
 	scan.ConfidenceScore = &score
@@ -192,15 +184,6 @@ func toScanDTO(scan *entities.DrugScan, matched *entities.RegisteredMedicine) dt
 	}
 
 	return d
-}
-
-// lotExpired treats the expiry as month-granular: packs print only month and
-// year, the client sends the 1st of that month, and a pack labelled "Oct 2028"
-// is good through the last day of October.
-func lotExpired(expiry, now time.Time) bool {
-	expiry = expiry.UTC()
-	firstOfNextMonth := time.Date(expiry.Year(), expiry.Month()+1, 1, 0, 0, 0, 0, time.UTC)
-	return !now.Before(firstOfNextMonth)
 }
 
 // populateNameOnlyResult never verifies: a name is printed on every copy of a
