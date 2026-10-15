@@ -106,3 +106,35 @@ func TestCreateMedication_RequiresStartDateForAnchoredFrequencies(t *testing.T) 
 		})
 	}
 }
+
+// A bad frequency or dose time is the client's mistake; returning a plain
+// wrapped error made the bus answer 500 and hid the cause from the app.
+func TestCreateMedication_InvalidInputIsValidationError(t *testing.T) {
+	tests := []struct {
+		name      string
+		frequency *string
+		timeValue string
+	}{
+		{"unknown frequency", strPtr("2x a day"), "08:00"},
+		{"12-hour dose time", nil, "8:00 AM"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &stubMedicationRepo{}
+			h := NewCreateMedicationHandler(repo)
+
+			_, err := h.Handle(context.Background(), command.CreateMedicationCommand{
+				UserID:    1,
+				Name:      "Metformin",
+				Frequency: tt.frequency,
+				Times:     []command.MedicationTimeInput{{TimeValue: tt.timeValue}},
+			})
+
+			var appErr *application.AppError
+			require.ErrorAs(t, err, &appErr)
+			assert.Equal(t, application.KindValidation, appErr.Kind)
+			assert.Zero(t, repo.saved)
+		})
+	}
+}

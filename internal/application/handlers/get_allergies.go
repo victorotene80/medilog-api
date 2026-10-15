@@ -71,6 +71,7 @@ func allergyToDTO(allergy *entities.Allergy) dto.AllergyDTO {
 		ID:          allergy.ID,
 		Name:        allergy.Name,
 		Category:    allergy.Category.Int(),
+		CategoryStr: allergy.Category.String(),
 		Description: allergy.Description,
 	}
 }

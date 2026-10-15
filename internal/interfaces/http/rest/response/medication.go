@@ -24,6 +24,8 @@ type MedicationResponse struct {
 	EndDate            *time.Time               `json:"end_date,omitempty"`
 	Notes              *string                  `json:"notes,omitempty"`
 	AdherenceRate      float64                  `json:"adherence_rate"`
+	AdherenceCount     int                      `json:"adherence_count"`
+	TotalDoses         int                      `json:"total_doses"`
 	IsCompleted        bool                     `json:"is_completed"`
 	CompletedDate      *time.Time               `json:"completed_date,omitempty"`
 	Times              []MedicationTimeResponse `json:"times"`

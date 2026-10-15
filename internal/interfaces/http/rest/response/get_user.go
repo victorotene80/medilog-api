@@ -31,5 +31,6 @@ type GetUserEmergencyContactDTO struct {
 	Name         string `json:"name"`
 	Relationship string `json:"relationship"`
 	Phone        string `json:"phone"`
+	CountryCode  string `json:"country_code,omitempty"`
 	IsPrimary    bool   `json:"is_primary"`
 }

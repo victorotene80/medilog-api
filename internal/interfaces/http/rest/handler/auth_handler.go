@@ -57,6 +57,7 @@ func (h *AuthHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		Sex:         req.Sex,
 		BloodType:   req.BloodType,
 		CountryCode: req.CountryCode,
+		Timezone:    req.Timezone,
 	}
 
 	result, err := messaging.Execute[

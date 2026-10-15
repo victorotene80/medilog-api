@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -102,4 +103,47 @@ func TestApplyProfileFields_NoProfileFieldsIsNoop(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Nil(t, agg.Profile)
+}
+
+func TestValidateDateOfBirth(t *testing.T) {
+	now := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name    string
+		dob     time.Time
+		wantErr bool
+	}{
+		{"typical adult", time.Date(1990, 5, 1, 0, 0, 0, 0, time.UTC), false},
+		{"lower bound", minDateOfBirth, false},
+		{"born today", time.Date(2026, 10, 7, 0, 0, 0, 0, time.UTC), false},
+		{"picker slip to 1874", time.Date(1874, 1, 1, 0, 0, 0, 0, time.UTC), true},
+		{"future date", time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC), true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateDateOfBirth(tt.dob, now)
+			if !tt.wantErr {
+				require.NoError(t, err)
+				return
+			}
+			var appErr *application.AppError
+			require.ErrorAs(t, err, &appErr)
+			assert.Equal(t, application.KindValidation, appErr.Kind)
+		})
+	}
+}
+
+// PUT and DELETE /emergency-contacts/{publicId} resolve by public ID; returning
+// the row ID here made every contact edit from the profile fail with 400.
+func TestMapPrimaryEmergencyContact_ReturnsPublicID(t *testing.T) {
+	contacts := []*entities.EmergencyContact{
+		{ID: 17, PublicID: "11111111-1111-1111-1111-111111111111", Name: "Backup"},
+		{ID: 18, PublicID: "494dc775-ece5-422b-9f3a-000000000000", Name: "Ada", CountryCode: "NG", IsPrimary: true},
+	}
+
+	got := mapPrimaryEmergencyContact(contacts)
+
+	require.NotNil(t, got)
+	assert.Equal(t, "494dc775-ece5-422b-9f3a-000000000000", got.ID)
+	assert.Equal(t, "NG", got.CountryCode)
 }

@@ -572,6 +572,7 @@ func (rt *Router) Setup() http.Handler {
 			// Endpoints:
 			// GET    /api/v1/health/allergies
 			// POST   /api/v1/health/allergies
+			// PUT    /api/v1/health/allergies/{publicId}
 			// DELETE /api/v1/health/allergies/{publicId}
 			r.Route("/health/allergies", func(r chi.Router) {
 				r.Get("/", rt.UserAllergyHandler.ListUserAllergies)

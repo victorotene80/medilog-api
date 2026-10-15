@@ -128,17 +128,19 @@ func (h *LoginHandler) resolveUser(
 	cmd command.LoginCommand,
 ) (*aggregates.UserAggregate, error) {
 	if cmd.Email != nil {
-		if _, err := valueobjects.NewEmail(*cmd.Email); err != nil {
+		email, err := valueobjects.NewEmail(*cmd.Email)
+		if err != nil {
 			return nil, nil
 		}
-		return h.userRepo.FindByEmail(ctx, *cmd.Email)
+		return h.userRepo.FindByEmail(ctx, email.String())
 	}
 
 	if cmd.Phone != nil {
-		if _, err := valueobjects.NewPhone(*cmd.Phone); err != nil {
+		phone, err := valueobjects.NewPhone(normalizeRecipient(*cmd.Phone))
+		if err != nil {
 			return nil, nil
 		}
-		return h.userRepo.FindByPhone(ctx, *cmd.Phone)
+		return h.userRepo.FindByPhone(ctx, phone.String())
 	}
 
 	return nil, nil // neither field set — caller gets "invalid credentials"

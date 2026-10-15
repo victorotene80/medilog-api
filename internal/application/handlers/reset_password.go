@@ -65,6 +65,8 @@ func (h *ResetPasswordHandler) Handle(
 	now := h.clock()
 	meta, _ := requestmeta.FromContext(ctx)
 
+	cmd.Recipient = normalizeRecipient(cmd.Recipient)
+
 	otp, err := h.otpRepo.FindLatestByRecipientAndPurpose(
 		ctx, cmd.Recipient, string(valueobjects.OTPPurposePasswordReset),
 	)

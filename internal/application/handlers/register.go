@@ -78,19 +78,22 @@ func (h *RegisterHandler) Handle(
 
 	countryCode, err := valueobjects.NewCountryCode(cmd.CountryCode)
 	if err != nil {
-		return nil, err
+		return nil, application.NewValidation("invalid country code")
 	}
 	sex, err := valueobjects.NewSex(cmd.Sex)
 	if err != nil {
-		return nil, err
+		return nil, application.NewValidation(err.Error())
 	}
 	bloodType, err := valueobjects.NewBloodType(cmd.BloodType)
 	if err != nil {
-		return nil, err
+		return nil, application.NewValidation(err.Error())
 	}
 	dateOfBirth, err := time.Parse("2006-01-02", strings.TrimSpace(cmd.DOB))
 	if err != nil {
 		return nil, application.NewValidation("invalid date of birth")
+	}
+	if err := validateDateOfBirth(dateOfBirth, h.clock()); err != nil {
+		return nil, err
 	}
 
 	passwordHash, err := h.passwordHasher.Hash(cmd.Password)
@@ -113,6 +116,15 @@ func (h *RegisterHandler) Handle(
 	)
 
 	agg := aggregates.NewUserAggregate(user)
+
+	// The device timezone places reminders at the user's local wall-clock time.
+	// An unrecognized name keeps the UTC default rather than failing sign-up at
+	// its last step; the user can still correct it from their profile.
+	if cmd.Timezone != nil {
+		if tz, err := valueobjects.NewTimezone(*cmd.Timezone); err == nil {
+			agg.Profile.Timezone = tz
+		}
+	}
 
 	// The user row and the user.created outbox row commit together or not at
 	// all. Previously Save committed on its own connection and the outbox write
@@ -203,4 +215,15 @@ func registerContactToStrings(
 	}
 
 	return emailString, phoneString
+}
+
+// minDateOfBirth rejects slips of the picker wheel (1874 was accepted in QA)
+// while still admitting the oldest living people.
+var minDateOfBirth = time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)
+
+func validateDateOfBirth(dob, now time.Time) error {
+	if dob.Before(minDateOfBirth) || dob.After(now) {
+		return application.NewValidation("date of birth must be between 1900-01-01 and today")
+	}
+	return nil
 }

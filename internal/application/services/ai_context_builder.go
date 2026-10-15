@@ -128,7 +128,7 @@ func (b *AIContextBuilder) Build(ctx context.Context, userID int64) (*AIContext,
 				times := make([]string, 0, len(agg.Times))
 				for _, t := range agg.Times {
 					if t != nil {
-						times = append(times, t.TimeValue.Format("15:04"))
+						times = append(times, t.TimeValue.UTC().Format("15:04"))
 					}
 				}
 				appendKV(&out, "times", strings.Join(times, ", "))

@@ -61,7 +61,7 @@ func (h *ChangePasswordHandler) Handle(
 	}
 
 	if agg.User.PasswordHash == nil || !h.passwordHasher.Verify(cmd.OldPassword, *agg.User.PasswordHash) {
-		return struct{}{}, application.NewUnauthorized("current password is incorrect")
+		return struct{}{}, application.NewValidation("current password is incorrect")
 	}
 
 	if err := h.passwordService.Validate(cmd.NewPassword); err != nil {

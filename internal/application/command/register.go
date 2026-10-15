@@ -10,4 +10,5 @@ type RegisterCommand struct {
 	Sex         int
 	BloodType   string
 	CountryCode string
+	Timezone    *string
 }

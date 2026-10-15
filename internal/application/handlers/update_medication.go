@@ -49,7 +49,7 @@ func (h *UpdateMedicationHandler) Handle(ctx context.Context, cmd command.Update
 	if cmd.Frequency != nil {
 		freq, err := valueobjects.NewMedicationFrequency(cmd.Frequency)
 		if err != nil {
-			return struct{}{}, fmt.Errorf("invalid frequency: %w", err)
+			return struct{}{}, application.NewValidation("frequency must be one of once, daily, twice_daily, three_times_daily, weekly, as_needed")
 		}
 
 		// Checked on update as well as create, and against cmd.StartDate rather
@@ -72,7 +72,7 @@ func (h *UpdateMedicationHandler) Handle(ctx context.Context, cmd command.Update
 	if cmd.AddedVia != nil {
 		src, err := valueobjects.NewMedicationSource(*cmd.AddedVia)
 		if err != nil {
-			return struct{}{}, fmt.Errorf("invalid source: %w", err)
+			return struct{}{}, application.NewValidation("invalid added_via source")
 		}
 		m.AddedVia = &src
 	} else {

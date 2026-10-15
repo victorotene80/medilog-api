@@ -57,6 +57,8 @@ func (h *ForgotPasswordHandler) Handle(
 	now := h.clock()
 	meta, _ := requestmeta.FromContext(ctx)
 
+	cmd.Recipient = normalizeRecipient(cmd.Recipient)
+
 	agg, err := h.userRepo.FindByPhone(ctx, cmd.Recipient)
 	if err != nil {
 		return struct{}{}, nil

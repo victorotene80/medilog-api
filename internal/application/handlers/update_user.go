@@ -55,7 +55,7 @@ func (h *UpdateUserHandler) Handle(
 
 	// Everything is validated before anything is mutated, so a rejected field
 	// never leaves the aggregate partially updated.
-	if err := applyUserFields(agg.User, cmd); err != nil {
+	if err := applyUserFields(agg.User, cmd, h.clock()); err != nil {
 		return nil, err
 	}
 
@@ -72,7 +72,7 @@ func (h *UpdateUserHandler) Handle(
 	return UserAggregateToGetUserDTO(agg), nil
 }
 
-func applyUserFields(user *entities.User, cmd command.UpdateUserCommand) error {
+func applyUserFields(user *entities.User, cmd command.UpdateUserCommand, now time.Time) error {
 	if cmd.FirstName != nil {
 		name := strings.TrimSpace(*cmd.FirstName)
 		if name == "" {
@@ -90,6 +90,9 @@ func applyUserFields(user *entities.User, cmd command.UpdateUserCommand) error {
 	}
 
 	if cmd.DOB != nil {
+		if err := validateDateOfBirth(*cmd.DOB, now); err != nil {
+			return err
+		}
 		user.DateOfBirth = cmd.DOB
 	}
 

@@ -10,9 +10,11 @@ func MedicationAggregateToDTO(agg *aggregates.MedicationAggregate) dto.Medicatio
 
 	timeDTOs := make([]dto.MedicationTimeDTO, 0, len(agg.Times))
 	for _, t := range agg.Times {
+		// Stored as a UTC instant on the zero date; the driver hands it back in
+		// the server's local zone, which would shift it on any non-UTC host.
 		timeDTOs = append(timeDTOs, dto.MedicationTimeDTO{
 			ID:        t.ID,
-			TimeValue: t.TimeValue.Format("15:04"),
+			TimeValue: t.TimeValue.UTC().Format("15:04"),
 		})
 	}
 
@@ -33,6 +35,8 @@ func MedicationAggregateToDTO(agg *aggregates.MedicationAggregate) dto.Medicatio
 		EndDate:            m.EndDate,
 		Notes:              m.Notes,
 		AdherenceRate:      m.AdherenceRate(),
+		AdherenceCount:     m.AdherenceCount,
+		TotalDoses:         m.TotalDoses,
 		IsCompleted:        m.IsCompleted,
 		CompletedDate:      m.CompletedDate,
 		Times:              timeDTOs,

@@ -157,6 +157,7 @@ func GetUserDTOToResponse(result *dto.GetUserDTO) response.GetUserResponse {
 			Name:         result.EmergencyContact.Name,
 			Relationship: result.EmergencyContact.Relationship,
 			Phone:        result.EmergencyContact.Phone,
+			CountryCode:  result.EmergencyContact.CountryCode,
 			IsPrimary:    result.EmergencyContact.IsPrimary,
 		}
 	}
@@ -298,6 +299,8 @@ func MedicationDTOToResponse(d dto.MedicationDTO) response.MedicationResponse {
 		EndDate:            d.EndDate,
 		Notes:              d.Notes,
 		AdherenceRate:      d.AdherenceRate,
+		AdherenceCount:     d.AdherenceCount,
+		TotalDoses:         d.TotalDoses,
 		IsCompleted:        d.IsCompleted,
 		CompletedDate:      d.CompletedDate,
 		Times:              times,

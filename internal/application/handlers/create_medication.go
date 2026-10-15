@@ -44,7 +44,7 @@ func (h *CreateMedicationHandler) Handle(ctx context.Context, cmd command.Create
 	if cmd.Frequency != nil {
 		freq, err := valueobjects.NewMedicationFrequency(cmd.Frequency)
 		if err != nil {
-			return struct{}{}, fmt.Errorf("invalid frequency: %w", err)
+			return struct{}{}, application.NewValidation("frequency must be one of once, daily, twice_daily, three_times_daily, weekly, as_needed")
 		}
 
 		// once and weekly are anchored to the start date — dayMatchesFrequency
@@ -67,7 +67,7 @@ func (h *CreateMedicationHandler) Handle(ctx context.Context, cmd command.Create
 	if cmd.AddedVia != nil {
 		src, err := valueobjects.NewMedicationSource(*cmd.AddedVia)
 		if err != nil {
-			return struct{}{}, fmt.Errorf("invalid source: %w", err)
+			return struct{}{}, application.NewValidation("invalid added_via source")
 		}
 		med.AddedVia = &src
 	}
@@ -91,7 +91,7 @@ func parseMedicationTimes(inputs []command.MedicationTimeInput, now time.Time) (
 	for _, input := range inputs {
 		t, err := time.Parse("15:04", input.TimeValue)
 		if err != nil {
-			return nil, fmt.Errorf("invalid time value %q: expected HH:MM", input.TimeValue)
+			return nil, application.NewValidation(fmt.Sprintf("invalid time value %q: expected HH:MM", input.TimeValue))
 		}
 		times = append(times, &entities.MedicationTime{
 			TimeValue: t,

@@ -63,7 +63,7 @@ func (h *LoginViaOTPHandler) Handle(
 	now := h.clock()
 	meta, _ := requestmeta.FromContext(ctx)
 
-	recipient := strings.TrimSpace(cmd.Recipient)
+	recipient := normalizeRecipient(cmd.Recipient)
 	if recipient == "" {
 		return nil, application.NewValidation("recipient is required")
 	}

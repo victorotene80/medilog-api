@@ -52,6 +52,8 @@ func (h *DeleteAccountHandler) Handle(
 ) (struct{}, error) {
 	now := h.clock()
 
+	cmd.Recipient = normalizeRecipient(cmd.Recipient)
+
 	otp, err := h.otpRepo.FindLatestByRecipientAndPurpose(ctx, cmd.Recipient, string(valueobjects.OTPPurposeDeleteAccount))
 	if err != nil {
 		return struct{}{}, fmt.Errorf("find OTP: %w", err)

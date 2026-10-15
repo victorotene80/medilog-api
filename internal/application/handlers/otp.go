@@ -53,7 +53,7 @@ func (h *RequestOTPHandler) Handle(
 	ctx context.Context,
 	cmd command.RequestOTPCommand,
 ) (*dto.RequestOTPResultDTO, error) {
-	recipient := strings.TrimSpace(cmd.Recipient)
+	recipient := normalizeRecipient(cmd.Recipient)
 	if recipient == "" {
 		return nil, application.NewValidation("recipient is required")
 	}
@@ -182,7 +182,7 @@ func (h *VerifyOTPHandler) Handle(
 	ctx context.Context,
 	cmd command.VerifyOTPCommand,
 ) (*dto.VerifyOTPResultDTO, error) {
-	recipient := strings.TrimSpace(cmd.Recipient)
+	recipient := normalizeRecipient(cmd.Recipient)
 	if recipient == "" {
 		return nil, application.NewValidation("recipient is required")
 	}
@@ -297,7 +297,7 @@ func (h *RequestOTPHandler) resolveOTPUserID(
 	ctx context.Context,
 	recipient string,
 ) (int64, bool, error) {
-	recipient = strings.TrimSpace(recipient)
+	recipient = normalizeRecipient(recipient)
 	if recipient == "" {
 		return 0, false, application.NewValidation("recipient is required")
 	}
@@ -325,4 +325,16 @@ func (h *RequestOTPHandler) resolveOTPUserID(
 	}
 
 	return user.ID, true, nil
+}
+
+// normalizeRecipient puts an email or phone into the form register stores
+// (see valueobjects.NewEmail / NewPhone). Every lookup and OTP key must go
+// through it: normalizing only some steps of a flow makes a code issued for
+// "John@x.com" unverifiable as "john@x.com".
+func normalizeRecipient(raw string) string {
+	v := strings.TrimSpace(raw)
+	if strings.Contains(v, "@") {
+		return strings.ToLower(v)
+	}
+	return strings.NewReplacer(" ", "", "-", "", "(", "", ")", "").Replace(v)
 }

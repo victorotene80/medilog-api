@@ -1,7 +1,11 @@
 -- Seeds a common-allergens starter catalog. Category integers match
 -- internal/domain/valueobjects/allergy.go: 1=Food, 2=Drug,
 -- 3=Environmental, 4=Contact, 5=Other.
-INSERT INTO allergies (name, category, description) VALUES
+-- Databases seeded by hand already hold some of these rows, and not every
+-- environment has a unique index to target with ON CONFLICT, so existence is
+-- checked per row instead.
+INSERT INTO allergies (name, category, description)
+SELECT v.name, v.category, v.description FROM (VALUES
     ('Peanuts', 1, 'One of the most common and severe food allergies.'),
     ('Tree nuts', 1, 'Includes almonds, walnuts, cashews, and pistachios.'),
     ('Shellfish', 1, 'Includes shrimp, crab, and lobster.'),
@@ -26,4 +30,11 @@ INSERT INTO allergies (name, category, description) VALUES
     ('Nickel', 4, 'A frequent cause of contact dermatitis from jewelry and metal.'),
     ('Fragrances', 4, 'Found in perfumes, cosmetics, and cleaning products.'),
     ('Poison ivy', 4, 'Causes contact dermatitis from plant oils.'),
-    ('Other', 5, 'Allergy not covered by the categories above.');
+    ('Other', 5, 'Allergy not covered by the categories above.')
+) AS v(name, category, description)
+WHERE NOT EXISTS (
+    SELECT 1 FROM allergies a
+    WHERE lower(a.name) = lower(v.name)
+      AND a.category = v.category
+      AND a.deleted_at IS NULL
+);

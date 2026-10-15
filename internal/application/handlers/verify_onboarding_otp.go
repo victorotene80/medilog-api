@@ -53,7 +53,7 @@ func (h *VerifyOnboardingOTPHandler) Handle(
 	cmd command.VerifyOnboardingOTPCommand,
 ) (*dto.VerifyOnboardingOTPResultDTO, error) {
 
-	recipient := strings.TrimSpace(cmd.Recipient)
+	recipient := normalizeRecipient(cmd.Recipient)
 	if recipient == "" {
 		return nil, application.NewValidation("recipient is required")
 	}

@@ -136,7 +136,7 @@ func mapPrimaryEmergencyContact(
 	}
 
 	return &dto.GetUserEmergencyContactDTO{
-		ID:           strconv.FormatInt(selected.ID, 10),
+		ID:           selected.PublicID,
 		Name:         selected.Name,
 		Relationship: selected.Relationship,
 		Phone:        selected.Phone,
